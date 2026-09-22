@@ -18,7 +18,9 @@ import {
   Info,
   MessageSquare,
   UserCheck,
+  Sparkles,
 } from "lucide-react";
+import { MedicineAiModal } from "../components/MedicineAiModal";
 
 import logo from "../assets/medilink-logo.png";
 import "./medicine-details.css";
@@ -37,6 +39,7 @@ function MedicineDetails() {
     aggregate: { averageRating: 0, totalReviews: 0 },
   });
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const initialMedicine = location.state?.medicine || {
     name: "Paracetamol 500mg",
@@ -432,6 +435,68 @@ function MedicineDetails() {
               Choose a nearby pharmacy to check stock and reserve your medicine.
             </p>
 
+            {/* MediLink AI Assistant Card */}
+            <div
+              style={{
+                marginTop: "16px",
+                padding: "14px 16px",
+                background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
+                borderRadius: "14px",
+                border: "1px solid #bae6fd",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "12px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "10px",
+                    background: "#0284c7",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <strong style={{ display: "block", fontSize: "13px", color: "#0369a1" }}>
+                    Have questions about this medicine?
+                  </strong>
+                  <span style={{ fontSize: "12px", color: "#64748b" }}>
+                    Ask AI about composition, uses & precautions
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAiModalOpen(true)}
+                style={{
+                  background: "#0284c7",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "8px 14px",
+                  fontSize: "13px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Sparkles size={14} />
+                Ask AI
+              </button>
+            </div>
+
           </div>
 
         </section>
@@ -613,18 +678,41 @@ function MedicineDetails() {
         {/* ================= MEDICINE INFORMATION ================= */}
         <section className="medicine-information-section">
 
-          <div className="medicine-information-header">
-            <div className="information-icon">
-              <Info size={21} />
+          <div className="medicine-information-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div className="information-icon">
+                <Info size={21} />
+              </div>
+
+              <div>
+                <span className="section-eyebrow">
+                  MEDICINE INFORMATION
+                </span>
+
+                <h2>About {medicine.name}</h2>
+              </div>
             </div>
 
-            <div>
-              <span className="section-eyebrow">
-                MEDICINE INFORMATION
-              </span>
-
-              <h2>About {medicine.name}</h2>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsAiModalOpen(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "#f0f9ff",
+                color: "#0284c7",
+                border: "1px solid #bae6fd",
+                padding: "8px 16px",
+                borderRadius: "10px",
+                fontSize: "13px",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              <Sparkles size={16} />
+              Ask AI Assistant
+            </button>
           </div>
 
 
@@ -816,6 +904,13 @@ function MedicineDetails() {
         </section>
 
       </main>
+
+      {/* MediLink Medicine AI Modal */}
+      <MedicineAiModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        medicine={medicine}
+      />
 
     </div>
   );

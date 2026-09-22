@@ -14,6 +14,8 @@ export const env = {
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
   DEV_ADMIN_EMAIL: process.env.DEV_ADMIN_EMAIL || "admin@medilink.com",
   DEV_ADMIN_PASSWORD: process.env.DEV_ADMIN_PASSWORD || "Admin@MediLink2026",
+  AI_PROVIDER: process.env.AI_PROVIDER || "internal",
+  AI_API_KEY: process.env.AI_API_KEY || "",
   isProduction: process.env.NODE_ENV === "production",
   isDevelopment: process.env.NODE_ENV !== "production",
 };

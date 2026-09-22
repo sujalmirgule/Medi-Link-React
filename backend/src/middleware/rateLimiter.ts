@@ -14,3 +14,18 @@ export const authRateLimiter = rateLimit({
     message: "Too many authentication attempts. Please try again later.",
   },
 });
+
+/**
+ * Rate Limiter for AI Assistant Endpoints
+ * Limits excessive requests to medicine information AI assistant.
+ */
+export const aiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60, // Limit each IP to 60 requests per 15 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many AI assistant requests. Please try again later.",
+  },
+});

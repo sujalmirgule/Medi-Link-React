@@ -217,3 +217,65 @@ model Review {
 | `PATCH` | `/api/v1/admin/discounts/:id/status` | Admin | Toggle discount active/inactive status with audit log |
 | `DELETE` | `/api/v1/admin/discounts/:id` | Admin | Delete discount coupon permanently with audit log |
 
+---
+
+## 10. Phase 12: Basic Medicine Information AI Assistant
+
+### 10.1 Overview & Scope Boundaries
+The MediLink AI Assistant is a **basic educational medicine information assistant**. It is grounded strictly in verified MediLink catalog data (`Medicine`, `MedicineCategory`).
+
+> **CRITICAL MEDICAL SAFETY RESTRICTIONS**:
+> The MediLink AI Assistant is NOT a diagnostic or prescribing system.
+> * ZERO disease diagnoses or symptom analyses.
+> * ZERO drug prescriptions or medication recommendations.
+> * ZERO dosage calculations or dosage change recommendations (regardless of age/weight).
+> * ZERO treatment alteration or discontinuation recommendations.
+> * ZERO emergency medical advice (immediate escalation to emergency helplines 112/108).
+> * ZERO hallucination of unverified medical claims, compositions, or side effects.
+
+### 10.2 AI Architecture & Provider Abstraction
+```text
+┌───────────────────────────────────────────────┐
+│               POST /api/v1/ai/chat            │
+└──────────────────────┬────────────────────────┘
+                       │ authenticate + aiRateLimiter
+                       ▼
+┌───────────────────────────────────────────────┐
+│                 AIController                  │
+└──────────────────────┬────────────────────────┘
+                       │ Zod Validation (chatRequestSchema)
+                       ▼
+┌───────────────────────────────────────────────┐
+│                  AIService                    │
+│                                               │
+│  1. Medicine Context Retrieval (Prisma)       │
+│  2. Pre-Inference Guardrails (AIGuardrails)   │
+│  3. Provider Execution (IAIProvider)          │
+│  4. Post-Inference Safety Verification        │
+│  5. Response Formatting & Source Attribution   │
+└──────────────────────┬────────────────────────┘
+                       │
+        ┌──────────────┴──────────────┐
+        ▼                             ▼
+┌───────────────────────────┐ ┌───────────────────────────┐
+│      InternalProvider     │ │  Future External Provider │
+│ (Deterministic, Grounded) │ │   (OpenAI / Gemini / etc) │
+└───────────────────────────┘ └───────────────────────────┘
+```
+
+### 10.3 Medical Safety Guardrails
+1. **Emergency Escalation:** Detects life-threatening symptoms, overdose, poisoning, or acute chest pain and provides immediate emergency hotline contact details.
+2. **Clinical Safety Policy:** Intercepts diagnosis inquiries, prescription requests, dosage calculations, and treatment changes, redirecting users to licensed medical practitioners.
+3. **Special Populations Advisory:** Provides cautious educational guidance for pregnancy, lactation, and pediatrics, requiring specialist consultation.
+4. **Prompt Injection Defense:** Defends against jailbreak attempts and system prompt overrides, strictly upholding medical guardrails.
+
+### 10.4 API Specification
+
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/ai/chat` | Authenticated (Rate-limited: 60 req/15 min) | Submit medicine inquiries and receive safe, grounded educational responses |
+
+### 10.5 Known Limitations
+* The assistant is strictly limited to verified catalog information present in the database.
+* Comprehensive drug-drug interaction databases and real-time medical imaging are outside Phase 12 scope.
+

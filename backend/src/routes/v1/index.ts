@@ -43,9 +43,13 @@ router.use("/notifications", notificationRouter);
 import { reviewRouter, adminReviewRouter } from "../../modules/reviews/review.routes";
 import { discountRouter, adminDiscountRouter } from "../../modules/discounts/discount.routes";
 
+// Phase 12: AI Assistant
+import { aiRouter } from "../../modules/ai/ai.routes";
+
 router.use("/reviews", reviewRouter);
 router.use("/discounts", discountRouter);
 router.use("/admin/reviews", adminReviewRouter);
 router.use("/admin/discounts", adminDiscountRouter);
+router.use("/ai", aiRouter);
 
 export default router;
