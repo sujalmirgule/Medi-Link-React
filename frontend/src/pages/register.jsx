@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 import {
   UserRound,
@@ -20,8 +21,23 @@ import logo from "../assets/medilink-logo.png";
 
 import "./register.css";
 
+const ROLE_MAP = {
+  user: "CUSTOMER",
+  pharmacy: "PHARMACY",
+  delivery: "DELIVERY_PARTNER",
+};
+
 function Register() {
   const navigate = useNavigate();
+  const { register } = useAuth();
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,11 +64,38 @@ function Register() {
     },
   ];
 
-  const handleRegister = (event) => {
+  const handleRegister = async (event) => {
     event.preventDefault();
+    setErrorMessage("");
 
-    console.log("Registration attempted");
-    console.log("Selected role:", role);
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match. Please verify.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await register({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        password,
+        role: ROLE_MAP[role] || "CUSTOMER",
+      });
+      navigate("/user/dashboard", { replace: true });
+    } catch (err) {
+      setErrorMessage(
+        err.message || "Registration failed. Please check your information."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -173,6 +216,23 @@ function Register() {
 
           </div>
 
+          {errorMessage && (
+            <div
+              style={{
+                backgroundColor: "#fef2f2",
+                border: "1px solid #fecaca",
+                color: "#991b1b",
+                padding: "10px 14px",
+                borderRadius: "10px",
+                fontSize: "13px",
+                marginTop: "16px",
+                lineHeight: "1.4",
+              }}
+              role="alert"
+            >
+              {errorMessage}
+            </div>
+          )}
 
           {/* Form */}
           <form
@@ -199,6 +259,8 @@ function Register() {
                   type="text"
                   className="register-input"
                   placeholder="Enter your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   required
                 />
 
@@ -228,6 +290,8 @@ function Register() {
                     type="email"
                     className="register-input"
                     placeholder="Enter email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
 
@@ -254,6 +318,8 @@ function Register() {
                     type="tel"
                     className="register-input"
                     placeholder="Enter phone number"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     required
                   />
 
@@ -289,6 +355,8 @@ function Register() {
                     }
                     className="register-input register-password-input"
                     placeholder="Create password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
                   />
 
@@ -335,6 +403,8 @@ function Register() {
                     }
                     className="register-input register-password-input"
                     placeholder="Confirm password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
 
@@ -449,8 +519,9 @@ function Register() {
             <button
               type="submit"
               className="register-button"
+              disabled={isSubmitting}
             >
-              <span>Create Account</span>
+              <span>{isSubmitting ? "Creating Account..." : "Create Account"}</span>
               <ArrowRight size={17} />
             </button>
 

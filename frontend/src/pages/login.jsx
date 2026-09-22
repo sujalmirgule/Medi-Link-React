@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 import {
   UserRound,
@@ -22,7 +23,13 @@ import "./login.css";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("user");
 
@@ -53,26 +60,22 @@ function Login() {
      LOGIN
   ====================================== */
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
+    setErrorMessage("");
+    setIsSubmitting(true);
 
-    /*
-      Frontend testing:
-      If User role is selected,
-      open User Dashboard.
-    */
-
-    if (role === "user") {
-      navigate("/user/dashboard");
-      return;
+    try {
+      await login({ email, password });
+      const from = location.state?.from?.pathname || "/user/dashboard";
+      navigate(from, { replace: true });
+    } catch (err) {
+      setErrorMessage(
+        err.message || "Failed to log in. Please check your credentials."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    /*
-      Other dashboards will be connected
-      later when we create them.
-    */
-
-    console.log("Selected role:", role);
   };
 
   return (
@@ -253,6 +256,24 @@ function Login() {
 
           {/* LOGIN FORM */}
 
+          {errorMessage && (
+            <div
+              style={{
+                backgroundColor: "#fef2f2",
+                border: "1px solid #fecaca",
+                color: "#991b1b",
+                padding: "10px 14px",
+                borderRadius: "10px",
+                fontSize: "13px",
+                marginTop: "16px",
+                lineHeight: "1.4",
+              }}
+              role="alert"
+            >
+              {errorMessage}
+            </div>
+          )}
+
           <form
             className="login-form"
             onSubmit={handleLogin}
@@ -279,6 +300,8 @@ function Login() {
                   className="login-input"
                   placeholder="Enter your email or phone number"
                   autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
 
@@ -312,6 +335,8 @@ function Login() {
                   className="login-input login-password-input"
                   placeholder="Enter your password"
                   autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
 
@@ -375,10 +400,11 @@ function Login() {
             <button
               type="submit"
               className="login-button"
+              disabled={isSubmitting}
             >
 
               <span>
-                Login
+                {isSubmitting ? "Logging in..." : "Login"}
               </span>
 
               <ArrowRight size={17} />

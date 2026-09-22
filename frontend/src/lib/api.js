@@ -1,11 +1,13 @@
 /**
  * MediLink API Client Foundation
- * Centralized HTTP request utility with environment-based base URL
- * and structured error handling.
+ * Centralized HTTP request utility with environment-based base URL,
+ * automatic JWT bearer token attachment, and structured error handling.
  */
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+
+const TOKEN_KEY = "medilink_token";
 
 class ApiError extends Error {
   constructor(message, status = 500, details = null) {
@@ -18,7 +20,7 @@ class ApiError extends Error {
 
 /**
  * Execute an HTTP request against the MediLink backend API.
- * @param {string} endpoint - API path (e.g. '/health')
+ * @param {string} endpoint - API path (e.g. '/health' or '/auth/login')
  * @param {RequestInit} [options] - Standard Fetch API request options
  * @returns {Promise<any>} Parsed response data
  */
@@ -30,6 +32,12 @@ async function request(endpoint, options = {}) {
     Accept: "application/json",
     ...options.headers,
   };
+
+  // Attach JWT Bearer token if stored
+  const token = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+  if (token && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
   const config = {
     ...options,
@@ -96,6 +104,22 @@ export const api = {
     request(endpoint, { ...options, method: "DELETE" }),
 
   getBaseUrl: () => API_BASE_URL,
+
+  setToken: (token) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(TOKEN_KEY, token);
+    }
+  },
+
+  getToken: () => {
+    return typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+  },
+
+  clearToken: () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  },
 };
 
 export default api;

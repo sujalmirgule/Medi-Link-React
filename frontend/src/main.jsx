@@ -16,37 +16,31 @@ import "./index.css";
 import App from "./App.jsx";
 import Login from "./pages/login.jsx";
 import Register from "./pages/register.jsx";
+import { AuthProvider } from "./context/AuthContext.jsx";
+import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <Routes>
-
-        <Route
-          path="/"
-          element={<App />}
-        />
-
-        <Route
-          path="/login"
-          element={<Login />}
-        />
-
-        <Route
-          path="/register"
-          element={<Register />}
-        />
-
-        <Route path="/user/dashboard" element={<UserDashboard />} />
-         <Route path="/medicines" element={<MedicineSearch />} />
-         <Route path="/medicine-details" element={<MedicineDetails />} />
-<Route
-  path="/pharmacy-selection"
-  element={<PharmacySelection />}
-
-/>
-<Route path="/reservation" element={<Reservation />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/user/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["CUSTOMER", "ADMIN", "PHARMACY", "DELIVERY_PARTNER"]}>
+                <UserDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/medicines" element={<MedicineSearch />} />
+          <Route path="/medicine-details" element={<MedicineDetails />} />
+          <Route path="/pharmacy-selection" element={<PharmacySelection />} />
+          <Route path="/reservation" element={<Reservation />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>
 );
