@@ -14,7 +14,11 @@
     "test:pharmacy": "npm run test:pharmacy --prefix backend",
     "test:orders": "npm run test:orders --prefix backend",
     "test:delivery": "npm run test:delivery --prefix backend",
-    "test": "npm run test:auth && npm run test:admin && npm run test:pharmacy && npm run test:orders && npm run test:delivery"
+    "test:phase11": "npm run test:phase11 --prefix backend",
+    "test:phase12": "npm run test:phase12 --prefix backend",
+    "test:phase13": "npm run test:phase13 --prefix backend",
+    "test:phase14": "npm run test:phase14 --prefix backend",
+    "test": "npm run test:all --prefix backend"
   },
   "keywords": [
     "medilink",

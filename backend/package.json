@@ -13,6 +13,11 @@
     "test:pharmacy": "tsx src/scripts/test-pharmacy.ts",
     "test:orders": "tsx src/scripts/test-orders.ts",
     "test:delivery": "tsx src/scripts/test-delivery.ts",
+    "test:phase11": "tsx src/scripts/test-phase11.ts",
+    "test:phase12": "tsx src/scripts/test-phase12.ts",
+    "test:phase13": "tsx src/scripts/test-phase13-e2e.ts",
+    "test:phase14": "tsx src/scripts/test-phase14-security.ts",
+    "test:all": "npm run test:auth && npm run test:admin && npm run test:pharmacy && npm run test:orders && npm run test:delivery && npm run test:phase11 && npm run test:phase12 && npm run test:phase13 && npm run test:phase14",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
