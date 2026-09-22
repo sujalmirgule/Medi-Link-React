@@ -12,6 +12,8 @@ declare global {
   }
 }
 
+export type AuthenticatedRequest = Request;
+
 /**
  * Authentication Middleware
  * Validates the JWT Bearer token and verifies the account is active.

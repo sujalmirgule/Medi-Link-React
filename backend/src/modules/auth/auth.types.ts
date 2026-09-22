@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { UserRole, VerificationStatus } from "@prisma/client";
 
 export interface JwtPayload {
   sub: string;
@@ -15,6 +15,8 @@ export interface SafeUser {
   phone: string | null;
   role: UserRole;
   isActive: boolean;
+  verificationStatus: VerificationStatus;
+  rejectionReason?: string | null;
   createdAt: Date;
   profile?: {
     firstName: string;
@@ -38,14 +40,41 @@ export interface AuthResponse {
   token: string;
 }
 
-export interface RegisterInput {
+export interface CustomerRegisterInput {
   fullName: string;
   email: string;
   phone?: string;
   password: string;
+}
+
+export interface PharmacyRegisterInput {
+  pharmacyName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  password: string;
+  licenseNumber: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+export interface DeliveryPartnerRegisterInput {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+export interface RegisterInput extends CustomerRegisterInput {
   role?: "CUSTOMER" | "PHARMACY" | "DELIVERY_PARTNER";
-  // Pharmacy optional fields
   pharmacyName?: string;
+  ownerName?: string;
   licenseNumber?: string;
   address?: string;
   city?: string;
@@ -56,4 +85,8 @@ export interface RegisterInput {
 export interface LoginInput {
   email: string;
   password: string;
+}
+
+export interface RejectVerificationInput {
+  reason: string;
 }

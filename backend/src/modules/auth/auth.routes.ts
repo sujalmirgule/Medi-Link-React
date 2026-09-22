@@ -9,6 +9,8 @@ const router = Router();
 
 // Public Routes with Rate Limiting
 router.post("/register", authRateLimiter, AuthController.register);
+router.post("/register/pharmacy", authRateLimiter, AuthController.registerPharmacy);
+router.post("/register/delivery-partner", authRateLimiter, AuthController.registerDeliveryPartner);
 router.post("/login", authRateLimiter, AuthController.login);
 
 // Authenticated Routes

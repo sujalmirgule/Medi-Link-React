@@ -21,6 +21,7 @@ async function main() {
       data: {
         role: UserRole.ADMIN,
         isActive: true,
+        verificationStatus: "NOT_REQUIRED",
         passwordHash,
       },
     });
@@ -32,6 +33,7 @@ async function main() {
         passwordHash,
         role: UserRole.ADMIN,
         isActive: true,
+        verificationStatus: "NOT_REQUIRED",
       },
     });
     console.log(`[Seed Admin] New ADMIN account provisioned successfully.`);

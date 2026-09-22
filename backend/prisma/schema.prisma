@@ -21,6 +21,13 @@ enum UserRole {
   ADMIN
 }
 
+enum VerificationStatus {
+  NOT_REQUIRED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 enum OrderStatus {
   PENDING
   ACCEPTED
@@ -88,25 +95,29 @@ model User {
   email        String    @unique
   phone        String?
   passwordHash String
-  role         UserRole  @default(CUSTOMER)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role               UserRole           @default(CUSTOMER)
+  isActive           Boolean            @default(true)
+  verificationStatus VerificationStatus @default(NOT_REQUIRED)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   // Relationships
-  profile         CustomerProfile?
-  deliveryPartner DeliveryPartner?
-  ownedPharmacies Pharmacy[]        @relation("PharmacyOwner")
-  pharmacyStaff   PharmacyStaff[]
-  addresses       Address[]
-  orders          Order[]           @relation("CustomerOrders")
-  reviews         Review[]          @relation("CustomerReviews")
-  notifications   Notification[]
-  auditLogs       AuditLog[]
+  profile               CustomerProfile?
+  deliveryPartner       DeliveryPartner?
+  ownedPharmacies       Pharmacy[]            @relation("PharmacyOwner")
+  pharmacyStaff         PharmacyStaff[]
+  addresses             Address[]
+  orders                Order[]               @relation("CustomerOrders")
+  reviews               Review[]              @relation("CustomerReviews")
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  verificationRequests  VerificationRequest[] @relation("UserVerificationRequests")
+  reviewedVerifications VerificationRequest[] @relation("AdminReviewedVerifications")
 
   @@index([email])
   @@index([phone])
   @@index([role])
+  @@index([verificationStatus])
 }
 
 // =============================================================================
@@ -195,6 +206,31 @@ model DeliveryPartner {
 
   @@index([isAvailable])
   @@index([isActive])
+}
+
+// =============================================================================
+// 4B. VERIFICATION REQUESTS
+// =============================================================================
+
+model VerificationRequest {
+  id              String             @id @default(uuid())
+  userId          String
+  role            UserRole
+  status          VerificationStatus @default(PENDING)
+  submittedData   Json?
+  rejectionReason String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  user       User  @relation("UserVerificationRequests", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("AdminReviewedVerifications", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([role])
+  @@index([createdAt])
 }
 
 // =============================================================================

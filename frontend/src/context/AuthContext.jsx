@@ -9,6 +9,20 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(api.getToken());
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const currentUser = await authService.getMe();
+      setUser(currentUser);
+      return currentUser;
+    } catch (err) {
+      console.warn("Failed to refresh user session:", err.message);
+      authService.logout();
+      setUser(null);
+      setToken(null);
+      throw err;
+    }
+  }, []);
+
   // Initialize auth state from local storage token
   useEffect(() => {
     let isMounted = true;
@@ -64,6 +78,20 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  const registerPharmacy = useCallback(async (pharmacyData) => {
+    const data = await authService.registerPharmacy(pharmacyData);
+    setUser(data.user);
+    setToken(data.token);
+    return data;
+  }, []);
+
+  const registerDeliveryPartner = useCallback(async (deliveryData) => {
+    const data = await authService.registerDeliveryPartner(deliveryData);
+    setUser(data.user);
+    setToken(data.token);
+    return data;
+  }, []);
+
   const logout = useCallback(() => {
     authService.logout();
     setUser(null);
@@ -73,10 +101,16 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     token,
+    role: user?.role || null,
+    verificationStatus: user?.verificationStatus || null,
+    rejectionReason: user?.rejectionReason || null,
     isAuthenticated: Boolean(user && token),
     isLoading,
     login,
     register,
+    registerPharmacy,
+    registerDeliveryPartner,
+    refreshUser,
     logout,
   };
 

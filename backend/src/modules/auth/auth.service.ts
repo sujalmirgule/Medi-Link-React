@@ -1,16 +1,27 @@
-import { UserRole } from "@prisma/client";
+import { UserRole, VerificationStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { PasswordService } from "./password.service";
 import { TokenService } from "./token.service";
-import { AuthResponse, LoginInput, RegisterInput, SafeUser } from "./auth.types";
+import {
+  AuthResponse,
+  CustomerRegisterInput,
+  DeliveryPartnerRegisterInput,
+  LoginInput,
+  PharmacyRegisterInput,
+  RegisterInput,
+  SafeUser,
+} from "./auth.types";
 
 export class AuthService {
   /**
-   * Register a new user with transactional profile creation.
+   * Register a standard Customer account.
+   * Customers do not require manual verification (verificationStatus: NOT_REQUIRED).
    */
-  static async register(input: RegisterInput): Promise<AuthResponse> {
+  static async registerCustomer(input: CustomerRegisterInput): Promise<AuthResponse> {
+    const email = input.email.toLowerCase().trim();
+
     const existingUser = await prisma.user.findUnique({
-      where: { email: input.email.toLowerCase().trim() },
+      where: { email },
     });
 
     if (existingUser) {
@@ -20,67 +31,33 @@ export class AuthService {
     }
 
     const passwordHash = await PasswordService.hashPassword(input.password);
-    const role = (input.role || "CUSTOMER") as UserRole;
-
-    // Split name into first and last
     const nameParts = input.fullName.trim().split(/\s+/);
     const firstName = nameParts[0] || "User";
     const lastName = nameParts.slice(1).join(" ") || firstName;
 
-    // Use Prisma transaction for atomic account + role entity creation
     const newUser = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          email: input.email.toLowerCase().trim(),
+          email,
           phone: input.phone?.trim() || null,
           passwordHash,
-          role,
+          role: UserRole.CUSTOMER,
           isActive: true,
+          verificationStatus: VerificationStatus.NOT_REQUIRED,
         },
       });
 
-      if (role === UserRole.CUSTOMER) {
-        await tx.customerProfile.create({
-          data: {
-            userId: user.id,
-            firstName,
-            lastName,
-          },
-        });
-      } else if (role === UserRole.PHARMACY) {
-        await tx.pharmacy.create({
-          data: {
-            ownerUserId: user.id,
-            name: input.pharmacyName?.trim() || `${input.fullName}'s Pharmacy`,
-            licenseNumber:
-              input.licenseNumber?.trim() ||
-              `LIC-PENDING-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            phone: input.phone?.trim() || "N/A",
-            email: input.email.toLowerCase().trim(),
-            address: input.address?.trim() || "Registration Address Pending",
-            city: input.city?.trim() || "Mumbai",
-            state: input.state?.trim() || "Maharashtra",
-            pincode: input.pincode?.trim() || "400001",
-            isVerified: false,
-            isActive: true,
-          },
-        });
-      } else if (role === UserRole.DELIVERY_PARTNER) {
-        await tx.deliveryPartner.create({
-          data: {
-            userId: user.id,
-            phone: input.phone?.trim() || "N/A",
-            isVerified: false,
-            isAvailable: false,
-            isActive: true,
-          },
-        });
-      }
+      await tx.customerProfile.create({
+        data: {
+          userId: user.id,
+          firstName,
+          lastName,
+        },
+      });
 
       return user;
     });
 
-    // Load newly created user with relational details
     const fullUser = await this.getMe(newUser.id);
     const token = TokenService.signToken({
       sub: newUser.id,
@@ -88,14 +65,221 @@ export class AuthService {
       role: newUser.role,
     });
 
-    return {
-      user: fullUser,
-      token,
-    };
+    return { user: fullUser, token };
+  }
+
+  /**
+   * Register a Pharmacy account.
+   * Sets verificationStatus = PENDING, creates Pharmacy record, and logs VerificationRequest.
+   * The pharmacy can log in immediately, but business features are guarded.
+   */
+  static async registerPharmacy(input: PharmacyRegisterInput): Promise<AuthResponse> {
+    const email = input.email.toLowerCase().trim();
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      const error: any = new Error("An account with this email already exists");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const existingLicense = await prisma.pharmacy.findUnique({
+      where: { licenseNumber: input.licenseNumber.trim() },
+    });
+
+    if (existingLicense) {
+      const error: any = new Error("A pharmacy with this license number already exists");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const passwordHash = await PasswordService.hashPassword(input.password);
+
+    const newUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          phone: input.phone.trim(),
+          passwordHash,
+          role: UserRole.PHARMACY,
+          isActive: true,
+          verificationStatus: VerificationStatus.PENDING,
+        },
+      });
+
+      await tx.pharmacy.create({
+        data: {
+          ownerUserId: user.id,
+          name: input.pharmacyName.trim(),
+          licenseNumber: input.licenseNumber.trim(),
+          phone: input.phone.trim(),
+          email,
+          address: input.address.trim(),
+          city: input.city.trim(),
+          state: input.state.trim(),
+          pincode: input.pincode.trim(),
+          isVerified: false,
+          isActive: true,
+        },
+      });
+
+      await tx.verificationRequest.create({
+        data: {
+          userId: user.id,
+          role: UserRole.PHARMACY,
+          status: VerificationStatus.PENDING,
+          submittedData: {
+            pharmacyName: input.pharmacyName.trim(),
+            ownerName: input.ownerName.trim(),
+            email,
+            phone: input.phone.trim(),
+            licenseNumber: input.licenseNumber.trim(),
+            address: input.address.trim(),
+            city: input.city.trim(),
+            state: input.state.trim(),
+            pincode: input.pincode.trim(),
+          },
+        },
+      });
+
+      return user;
+    });
+
+    const fullUser = await this.getMe(newUser.id);
+    const token = TokenService.signToken({
+      sub: newUser.id,
+      email: newUser.email,
+      role: newUser.role,
+    });
+
+    return { user: fullUser, token };
+  }
+
+  /**
+   * Register a Delivery Partner account.
+   * Sets verificationStatus = PENDING, creates DeliveryPartner record, and logs VerificationRequest.
+   * The driver can log in immediately, but delivery operations are guarded.
+   */
+  static async registerDeliveryPartner(
+    input: DeliveryPartnerRegisterInput
+  ): Promise<AuthResponse> {
+    const email = input.email.toLowerCase().trim();
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      const error: any = new Error("An account with this email already exists");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    const passwordHash = await PasswordService.hashPassword(input.password);
+
+    const newUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          phone: input.phone.trim(),
+          passwordHash,
+          role: UserRole.DELIVERY_PARTNER,
+          isActive: true,
+          verificationStatus: VerificationStatus.PENDING,
+        },
+      });
+
+      await tx.deliveryPartner.create({
+        data: {
+          userId: user.id,
+          phone: input.phone.trim(),
+          isVerified: false,
+          isAvailable: false,
+          isActive: true,
+        },
+      });
+
+      await tx.verificationRequest.create({
+        data: {
+          userId: user.id,
+          role: UserRole.DELIVERY_PARTNER,
+          status: VerificationStatus.PENDING,
+          submittedData: {
+            fullName: input.fullName.trim(),
+            email,
+            phone: input.phone.trim(),
+            address: input.address.trim(),
+            city: input.city.trim(),
+            state: input.state.trim(),
+            pincode: input.pincode.trim(),
+          },
+        },
+      });
+
+      return user;
+    });
+
+    const fullUser = await this.getMe(newUser.id);
+    const token = TokenService.signToken({
+      sub: newUser.id,
+      email: newUser.email,
+      role: newUser.role,
+    });
+
+    return { user: fullUser, token };
+  }
+
+  /**
+   * Unified registration helper for backwards compatibility.
+   */
+  static async register(input: RegisterInput): Promise<AuthResponse> {
+    const role = (input.role || "CUSTOMER") as UserRole;
+
+    if (role === UserRole.PHARMACY) {
+      return this.registerPharmacy({
+        pharmacyName: input.pharmacyName || `${input.fullName}'s Pharmacy`,
+        ownerName: input.ownerName || input.fullName,
+        email: input.email,
+        phone: input.phone || "N/A",
+        password: input.password,
+        licenseNumber:
+          input.licenseNumber ||
+          `LIC-PENDING-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        address: input.address || "Pending Address",
+        city: input.city || "Mumbai",
+        state: input.state || "Maharashtra",
+        pincode: input.pincode || "400001",
+      });
+    }
+
+    if (role === UserRole.DELIVERY_PARTNER) {
+      return this.registerDeliveryPartner({
+        fullName: input.fullName,
+        email: input.email,
+        phone: input.phone || "N/A",
+        password: input.password,
+        address: input.address || "Pending Address",
+        city: input.city || "Mumbai",
+        state: input.state || "Maharashtra",
+        pincode: input.pincode || "400001",
+      });
+    }
+
+    return this.registerCustomer({
+      fullName: input.fullName,
+      email: input.email,
+      phone: input.phone,
+      password: input.password,
+    });
   }
 
   /**
    * Authenticate user credentials and return JWT.
+   * NOTE: Users with verificationStatus = PENDING or REJECTED CAN STILL LOG IN!
+   * (LOGIN ACCESS != BUSINESS ACCESS)
    */
   static async login(input: LoginInput): Promise<AuthResponse> {
     const identifier = input.email.trim().toLowerCase();
@@ -141,6 +325,7 @@ export class AuthService {
 
   /**
    * Fetch safe authenticated user profile by user ID.
+   * Returns verificationStatus and any latest rejectionReason.
    */
   static async getMe(userId: string): Promise<SafeUser> {
     const user = await prisma.user.findUnique({
@@ -149,6 +334,10 @@ export class AuthService {
         profile: true,
         ownedPharmacies: true,
         deliveryPartner: true,
+        verificationRequests: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
     });
 
@@ -158,12 +347,20 @@ export class AuthService {
       throw error;
     }
 
+    const latestVerification = user.verificationRequests[0];
+    const rejectionReason =
+      user.verificationStatus === VerificationStatus.REJECTED
+        ? latestVerification?.rejectionReason || "Application details could not be verified"
+        : null;
+
     const safeUser: SafeUser = {
       id: user.id,
       email: user.email,
       phone: user.phone,
       role: user.role,
       isActive: user.isActive,
+      verificationStatus: user.verificationStatus,
+      rejectionReason,
       createdAt: user.createdAt,
       profile: user.profile
         ? {

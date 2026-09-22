@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { AuthService } from "./auth.service";
-import { loginSchema, registerSchema } from "./auth.validation";
+import {
+  customerRegisterSchema,
+  deliveryPartnerRegisterSchema,
+  loginSchema,
+  pharmacyRegisterSchema,
+  registerSchema,
+} from "./auth.validation";
 
 export class AuthController {
   /**
@@ -16,6 +22,86 @@ export class AuthController {
       res.status(201).json({
         success: true,
         message: "Account registered successfully",
+        data: result,
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          success: false,
+          message: error.errors[0]?.message || "Validation failed",
+          errors: error.errors,
+        });
+        return;
+      }
+
+      if (error.statusCode) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+        return;
+      }
+
+      next(error);
+    }
+  }
+
+  /**
+   * Register a Pharmacy account
+   * POST /api/v1/auth/register/pharmacy
+   */
+  static async registerPharmacy(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const parsedBody = pharmacyRegisterSchema.parse(req.body);
+      const result = await AuthService.registerPharmacy(parsedBody);
+
+      res.status(201).json({
+        success: true,
+        message: "Pharmacy registered successfully and submitted for verification",
+        data: result,
+      });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          success: false,
+          message: error.errors[0]?.message || "Validation failed",
+          errors: error.errors,
+        });
+        return;
+      }
+
+      if (error.statusCode) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+        return;
+      }
+
+      next(error);
+    }
+  }
+
+  /**
+   * Register a Delivery Partner account
+   * POST /api/v1/auth/register/delivery-partner
+   */
+  static async registerDeliveryPartner(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const parsedBody = deliveryPartnerRegisterSchema.parse(req.body);
+      const result = await AuthService.registerDeliveryPartner(parsedBody);
+
+      res.status(201).json({
+        success: true,
+        message: "Delivery partner registered successfully and submitted for verification",
         data: result,
       });
     } catch (error: any) {

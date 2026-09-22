@@ -66,8 +66,17 @@ function Login() {
     setIsSubmitting(true);
 
     try {
-      await login({ email, password });
-      const from = location.state?.from?.pathname || "/user/dashboard";
+      const data = await login({ email, password });
+      let defaultDashboard = "/user/dashboard";
+      if (data.user?.role === "PHARMACY") {
+        defaultDashboard = "/pharmacy/dashboard";
+      } else if (data.user?.role === "DELIVERY_PARTNER") {
+        defaultDashboard = "/delivery/dashboard";
+      } else if (data.user?.role === "ADMIN") {
+        defaultDashboard = "/admin/dashboard";
+      }
+
+      const from = location.state?.from?.pathname || defaultDashboard;
       navigate(from, { replace: true });
     } catch (err) {
       setErrorMessage(

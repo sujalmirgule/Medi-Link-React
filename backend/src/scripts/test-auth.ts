@@ -1,9 +1,10 @@
 import jwt from "jsonwebtoken";
-import { UserRole } from "@prisma/client";
+import { UserRole, VerificationStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { AuthService } from "../modules/auth/auth.service";
 import { TokenService } from "../modules/auth/token.service";
 import { PasswordService } from "../modules/auth/password.service";
+import { VerificationService } from "../modules/verification/verification.service";
 import { env } from "../config/env";
 
 let passedCount = 0;
@@ -24,7 +25,9 @@ async function cleanup() {
   const testEmails = [
     "auth.customer@medilink.com",
     "auth.pharmacy@medilink.com",
+    "auth.pharmacy.reject@medilink.com",
     "auth.delivery@medilink.com",
+    "auth.delivery.reject@medilink.com",
     "auth.inactive@medilink.com",
     "auth.admin.test@medilink.com",
   ];
@@ -42,13 +45,14 @@ async function cleanup() {
   await prisma.deliveryPartner.deleteMany({ where: { user: { email: { in: testEmails } } } });
   await prisma.customerProfile.deleteMany({ where: { user: { email: { in: testEmails } } } });
   await prisma.notification.deleteMany({ where: { user: { email: { in: testEmails } } } });
+  await prisma.verificationRequest.deleteMany({ where: { user: { email: { in: testEmails } } } });
   await prisma.auditLog.deleteMany({ where: { user: { email: { in: testEmails } } } });
   await prisma.user.deleteMany({ where: { email: { in: testEmails } } });
 }
 
 async function runTests() {
   console.log("==================================================");
-  console.log("   MediLink Phase 3: Auth & Security Test Matrix  ");
+  console.log("   MediLink Phase 3: Auth & Verification Matrix   ");
   console.log("==================================================");
 
   await cleanup();
@@ -59,14 +63,14 @@ async function runTests() {
   console.log("\n[TEST GROUP 1] Registration Matrix");
 
   // A. Customer Registration
-  const custRes = await AuthService.register({
+  const custRes = await AuthService.registerCustomer({
     fullName: "Alice Customer",
     email: "auth.customer@medilink.com",
     phone: "9100000001",
     password: "Password@123",
-    role: "CUSTOMER",
   });
   assert(custRes.user.role === UserRole.CUSTOMER, "Customer registered with role CUSTOMER");
+  assert(custRes.user.verificationStatus === VerificationStatus.NOT_REQUIRED, "Customer verificationStatus is NOT_REQUIRED");
   assert(custRes.user.profile?.firstName === "Alice", "Customer profile firstName created in transaction");
   assert(!!custRes.token, "Customer registration returned JWT token");
 
@@ -76,38 +80,46 @@ async function runTests() {
   assert(custDb?.passwordHash !== "Password@123", "Password is NOT stored in plaintext");
 
   // B. Pharmacy Registration
-  const pharmRes = await AuthService.register({
-    fullName: "MediCare Pharmacy",
+  const pharmRes = await AuthService.registerPharmacy({
+    pharmacyName: "MediCare Store 1",
+    ownerName: "Dr. Dave",
     email: "auth.pharmacy@medilink.com",
     phone: "9100000002",
     password: "Password@123",
-    role: "PHARMACY",
-    pharmacyName: "MediCare Store 1",
+    licenseNumber: "LIC-TEST-PHARM-001",
+    address: "123 Health Ave",
+    city: "Mumbai",
+    state: "Maharashtra",
+    pincode: "400001",
   });
   assert(pharmRes.user.role === UserRole.PHARMACY, "Pharmacy registered with role PHARMACY");
+  assert(pharmRes.user.verificationStatus === VerificationStatus.PENDING, "Pharmacy verificationStatus is PENDING");
   assert(pharmRes.user.pharmacy !== null, "Pharmacy record created");
   assert(pharmRes.user.pharmacy?.isVerified === false, "Registered pharmacy is NOT verified by default (isVerified = false)");
 
   // C. Delivery Partner Registration
-  const delivRes = await AuthService.register({
+  const delivRes = await AuthService.registerDeliveryPartner({
     fullName: "Bob Driver",
     email: "auth.delivery@medilink.com",
     phone: "9100000003",
     password: "Password@123",
-    role: "DELIVERY_PARTNER",
+    address: "456 Courier Lane",
+    city: "Mumbai",
+    state: "Maharashtra",
+    pincode: "400002",
   });
   assert(delivRes.user.role === UserRole.DELIVERY_PARTNER, "Delivery Partner registered with role DELIVERY_PARTNER");
+  assert(delivRes.user.verificationStatus === VerificationStatus.PENDING, "Delivery Partner verificationStatus is PENDING");
   assert(delivRes.user.deliveryPartner !== null, "Delivery partner record created");
   assert(delivRes.user.deliveryPartner?.isVerified === false, "Registered driver is NOT verified by default (isVerified = false)");
   assert(delivRes.user.deliveryPartner?.isAvailable === false, "Registered driver is NOT available by default");
 
   // D. Duplicate Registration
   try {
-    await AuthService.register({
+    await AuthService.registerCustomer({
       fullName: "Duplicate User",
       email: "auth.customer@medilink.com",
       password: "Password@123",
-      role: "CUSTOMER",
     });
     assert(false, "Duplicate email registration should have thrown error");
   } catch (err: any) {
@@ -210,13 +222,11 @@ async function runTests() {
   // -------------------------------------------------------------
   console.log("\n[TEST GROUP 5] Inactive Account Verification");
 
-  // Deactivate user
   await prisma.user.update({
     where: { id: custRes.user.id },
     data: { isActive: false },
   });
 
-  // Try login with deactivated user
   try {
     await AuthService.login({
       email: "auth.customer@medilink.com",
@@ -227,7 +237,6 @@ async function runTests() {
     assert(err.statusCode === 403, "Inactive account login rejected with 403 Forbidden");
   }
 
-  // Try getMe with token of deactivated user
   try {
     await AuthService.getMe(custRes.user.id);
     assert(false, "Inactive account getMe should fail");
@@ -235,7 +244,6 @@ async function runTests() {
     assert(err.statusCode === 401, "Inactive account session rejected");
   }
 
-  // Reactivate user
   await prisma.user.update({
     where: { id: custRes.user.id },
     data: { isActive: true },
@@ -244,11 +252,10 @@ async function runTests() {
   assert(reactivated.isActive === true, "Reactivated account successfully accessible");
 
   // -------------------------------------------------------------
-  // 6. ADMIN SECURITY
+  // 6. ADMIN PROVISIONING & RBAC
   // -------------------------------------------------------------
   console.log("\n[TEST GROUP 6] Admin Provisioning & RBAC");
 
-  // Create admin through controlled helper
   const adminHash = await PasswordService.hashPassword("AdminSecret@2026");
   const adminUser = await prisma.user.create({
     data: {
@@ -256,11 +263,11 @@ async function runTests() {
       passwordHash: adminHash,
       role: UserRole.ADMIN,
       isActive: true,
+      verificationStatus: VerificationStatus.NOT_REQUIRED,
     },
   });
   assert(adminUser.role === UserRole.ADMIN, "Controlled Admin creation succeeded");
 
-  // Sign admin token
   const adminToken = TokenService.signToken({
     sub: adminUser.id,
     email: adminUser.email,
@@ -269,11 +276,160 @@ async function runTests() {
   const adminDecoded = TokenService.verifyToken(adminToken);
   assert(adminDecoded.role === UserRole.ADMIN, "Admin token verified with role ADMIN");
 
+  // -------------------------------------------------------------
+  // 7. PHARMACY VERIFICATION WORKFLOW (Section 2 & 14-16)
+  // -------------------------------------------------------------
+  console.log("\n[TEST GROUP 7] Pharmacy Verification Workflow");
+
+  // Pending pharmacy login allowed (LOGIN ACCESS != BUSINESS ACCESS)
+  const pharmLogin = await AuthService.login({
+    email: "auth.pharmacy@medilink.com",
+    password: "Password@123",
+  });
+  assert(pharmLogin.user.verificationStatus === VerificationStatus.PENDING, "Pending pharmacy can log in and has PENDING status");
+  assert(pharmLogin.user.isActive === true, "Pending pharmacy account is active");
+
+  // Find verification request for this pharmacy
+  const pharmReq = await prisma.verificationRequest.findFirst({
+    where: { userId: pharmRes.user.id },
+  });
+  assert(pharmReq !== null, "VerificationRequest record found for pharmacy");
+  assert(pharmReq?.status === VerificationStatus.PENDING, "Initial VerificationRequest status is PENDING");
+
+  // Admin approves pharmacy
+  const approvedPharm = await VerificationService.approveVerification(pharmReq!.id, adminUser.id);
+  assert(approvedPharm.status === VerificationStatus.VERIFIED, "VerificationRequest status changed to VERIFIED");
+
+  // Check User and Pharmacy DB state after approval
+  const approvedPharmUser = await AuthService.getMe(pharmRes.user.id);
+  assert(approvedPharmUser.verificationStatus === VerificationStatus.VERIFIED, "Pharmacy user verificationStatus updated to VERIFIED");
+  assert(approvedPharmUser.pharmacy?.isVerified === true, "Pharmacy record isVerified is true");
+
+  // Verify AuditLog for approval
+  const approveAudit = await prisma.auditLog.findFirst({
+    where: { action: "PHARMACY_VERIFICATION_APPROVED", entityId: pharmReq!.id },
+  });
+  assert(approveAudit !== null, "AuditLog created for PHARMACY_VERIFICATION_APPROVED");
+
+  // Test Pharmacy Rejection Workflow
+  const rejectPharmRes = await AuthService.registerPharmacy({
+    pharmacyName: "Reject Pharmacy Store",
+    ownerName: "Dr. BadLicense",
+    email: "auth.pharmacy.reject@medilink.com",
+    phone: "9100000099",
+    password: "Password@123",
+    licenseNumber: "LIC-INVALID-999",
+    address: "999 Error St",
+    city: "Mumbai",
+    state: "Maharashtra",
+    pincode: "400099",
+  });
+  const rejectPharmReq = await prisma.verificationRequest.findFirst({
+    where: { userId: rejectPharmRes.user.id },
+  });
+
+  const rejectionReason = "Pharmacy license number could not be verified in state registry";
+  await VerificationService.rejectVerification(rejectPharmReq!.id, adminUser.id, rejectionReason);
+
+  // Rejected pharmacy can still login (LOGIN ACCESS != BUSINESS ACCESS)
+  const rejectedLogin = await AuthService.login({
+    email: "auth.pharmacy.reject@medilink.com",
+    password: "Password@123",
+  });
+  assert(rejectedLogin.user.verificationStatus === VerificationStatus.REJECTED, "Rejected pharmacy can log in with REJECTED status");
+  assert(rejectedLogin.user.rejectionReason === rejectionReason, "Rejection reason returned on user profile");
+  assert(rejectedLogin.user.pharmacy?.isVerified === false, "Rejected pharmacy remains isVerified = false");
+
+  const rejectAudit = await prisma.auditLog.findFirst({
+    where: { action: "PHARMACY_VERIFICATION_REJECTED", entityId: rejectPharmReq!.id },
+  });
+  assert(rejectAudit !== null, "AuditLog created for PHARMACY_VERIFICATION_REJECTED");
+
+  // -------------------------------------------------------------
+  // 8. DELIVERY PARTNER VERIFICATION WORKFLOW (Section 3 & 19-20)
+  // -------------------------------------------------------------
+  console.log("\n[TEST GROUP 8] Delivery Partner Verification Workflow");
+
+  // Pending delivery partner login allowed
+  const delivLogin = await AuthService.login({
+    email: "auth.delivery@medilink.com",
+    password: "Password@123",
+  });
+  assert(delivLogin.user.verificationStatus === VerificationStatus.PENDING, "Pending driver can log in and has PENDING status");
+
+  const delivReq = await prisma.verificationRequest.findFirst({
+    where: { userId: delivRes.user.id },
+  });
+  assert(delivReq !== null, "VerificationRequest record found for delivery partner");
+
+  // Admin approves delivery partner
+  await VerificationService.approveVerification(delivReq!.id, adminUser.id);
+  const approvedDelivUser = await AuthService.getMe(delivRes.user.id);
+  assert(approvedDelivUser.verificationStatus === VerificationStatus.VERIFIED, "Driver user verificationStatus updated to VERIFIED");
+  assert(approvedDelivUser.deliveryPartner?.isVerified === true, "Driver record isVerified is true");
+
+  const delivApproveAudit = await prisma.auditLog.findFirst({
+    where: { action: "DELIVERY_PARTNER_VERIFICATION_APPROVED", entityId: delivReq!.id },
+  });
+  assert(delivApproveAudit !== null, "AuditLog created for DELIVERY_PARTNER_VERIFICATION_APPROVED");
+
+  // Rejection of delivery partner
+  const rejectDelivRes = await AuthService.registerDeliveryPartner({
+    fullName: "Reject Driver",
+    email: "auth.delivery.reject@medilink.com",
+    phone: "9100000088",
+    password: "Password@123",
+    address: "888 Nowhere St",
+    city: "Mumbai",
+    state: "Maharashtra",
+    pincode: "400088",
+  });
+  const rejectDelivReq = await prisma.verificationRequest.findFirst({
+    where: { userId: rejectDelivRes.user.id },
+  });
+
+  const delivRejectionReason = "Driver contact details could not be validated";
+  await VerificationService.rejectVerification(rejectDelivReq!.id, adminUser.id, delivRejectionReason);
+
+  const rejectedDelivLogin = await AuthService.login({
+    email: "auth.delivery.reject@medilink.com",
+    password: "Password@123",
+  });
+  assert(rejectedDelivLogin.user.verificationStatus === VerificationStatus.REJECTED, "Rejected driver can log in with REJECTED status");
+  assert(rejectedDelivLogin.user.rejectionReason === delivRejectionReason, "Rejection reason attached to driver profile");
+
+  const delivRejectAudit = await prisma.auditLog.findFirst({
+    where: { action: "DELIVERY_PARTNER_VERIFICATION_REJECTED", entityId: rejectDelivReq!.id },
+  });
+  assert(delivRejectAudit !== null, "AuditLog created for DELIVERY_PARTNER_VERIFICATION_REJECTED");
+
+  // -------------------------------------------------------------
+  // 9. ADMIN VERIFICATION LIST & VALIDATION
+  // -------------------------------------------------------------
+  console.log("\n[TEST GROUP 9] Admin Verification List & Validation");
+
+  const allApps = await VerificationService.listVerifications();
+  assert(allApps.length >= 4, "Admin can list all verification applications");
+
+  const pharmOnly = await VerificationService.listVerifications({ role: "PHARMACY" });
+  assert(pharmOnly.every((a) => a.role === UserRole.PHARMACY), "Filtering by role PHARMACY returns only pharmacies");
+
+  const delivOnly = await VerificationService.listVerifications({ role: "DELIVERY_PARTNER" });
+  assert(delivOnly.every((a) => a.role === UserRole.DELIVERY_PARTNER), "Filtering by role DELIVERY_PARTNER returns only drivers");
+
+  // Rejection requires valid reason
+  try {
+    await VerificationService.rejectVerification(delivReq!.id, adminUser.id, "bad");
+    assert(false, "Short rejection reason should fail");
+  } catch (err: any) {
+    assert(err.statusCode === 400, "Rejection without proper reason rejected with 400 Bad Request");
+  }
+
   // Cleanup
   await cleanup();
 
   console.log("\n==================================================");
-  console.log(`  ALL ${passedCount}/${totalCount} AUTH MATRIX TESTS PASSED!`);
+  console.log(`  ALL ${passedCount}/${totalCount} PHASE 3 TESTS PASSED!`);
   console.log("==================================================");
 }
 
