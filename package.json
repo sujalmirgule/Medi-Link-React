@@ -18,7 +18,8 @@
     "test:phase12": "npm run test:phase12 --prefix backend",
     "test:phase13": "npm run test:phase13 --prefix backend",
     "test:phase14": "npm run test:phase14 --prefix backend",
-    "test": "npm run test:all --prefix backend"
+    "test": "npm run test:all --prefix backend",
+    "seed": "npm run seed --prefix backend"
   },
   "keywords": [
     "medilink",

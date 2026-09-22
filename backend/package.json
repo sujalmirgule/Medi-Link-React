@@ -18,7 +18,11 @@
     "test:phase13": "tsx src/scripts/test-phase13-e2e.ts",
     "test:phase14": "tsx src/scripts/test-phase14-security.ts",
     "test:all": "npm run test:auth && npm run test:admin && npm run test:pharmacy && npm run test:orders && npm run test:delivery && npm run test:phase11 && npm run test:phase12 && npm run test:phase13 && npm run test:phase14",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
