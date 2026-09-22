@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { customerService } from "../services/customer";
 
 import {
   Search,
@@ -33,6 +34,8 @@ function MedicineSearch() {
 
   const [availability, setAvailability] = useState("All");
   const [sortBy, setSortBy] = useState("Relevance");
+  const [backendMedicines, setBackendMedicines] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const locations = [
     "Kalyan, Maharashtra",
@@ -42,7 +45,7 @@ function MedicineSearch() {
     "Pune, Maharashtra",
   ];
 
-  const medicines = [
+  const staticMedicines = [
     {
       id: 1,
       name: "Paracetamol 500mg",
@@ -154,9 +157,65 @@ function MedicineSearch() {
     },
   ];
 
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(async () => {
+      try {
+        setIsLoading(true);
+        const res = await customerService.searchMedicines({
+          search: searchTerm.trim() || undefined,
+        });
+        if (active && res.items && res.items.length > 0) {
+          const mapped = res.items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            generic: item.genericName,
+            type: item.dosageForm || "Tablet",
+            price: item.minPrice ? `₹${item.minPrice}` : "₹28",
+            oldPrice:
+              item.maxPrice && item.maxPrice > item.minPrice
+                ? `₹${item.maxPrice}`
+                : `₹${Math.round((item.minPrice || 30) * 1.15)}`,
+            pharmacies: item.pharmacyCount || 1,
+            availability: item.isAvailable
+              ? item.availableStock < 10
+                ? "Limited"
+                : "Available"
+              : "Out of Stock",
+            category: item.category || "General",
+            raw: item,
+          }));
+          setBackendMedicines(mapped);
+        } else if (active && searchTerm.trim() !== "") {
+          setBackendMedicines([]);
+        }
+      } catch (err) {
+        // Keep existing/static fallback on API error
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [searchTerm]);
+
+  const activeMedicines = useMemo(() => {
+    if (backendMedicines.length > 0) {
+      return backendMedicines;
+    }
+    if (searchTerm.trim() !== "" && !isLoading) {
+      return [];
+    }
+    return staticMedicines;
+  }, [backendMedicines, searchTerm, isLoading]);
+
   const filteredMedicines = useMemo(() => {
-    let result = medicines.filter((medicine) => {
+    let result = activeMedicines.filter((medicine) => {
       const search = searchTerm.toLowerCase().trim();
+      if (!search) return true;
 
       return (
         medicine.name.toLowerCase().includes(search) ||
@@ -174,21 +233,21 @@ function MedicineSearch() {
     if (sortBy === "Price Low to High") {
       result.sort(
         (a, b) =>
-          Number(a.price.replace("₹", "")) -
-          Number(b.price.replace("₹", ""))
+          Number(String(a.price).replace("₹", "")) -
+          Number(String(b.price).replace("₹", ""))
       );
     }
 
     if (sortBy === "Price High to Low") {
       result.sort(
         (a, b) =>
-          Number(b.price.replace("₹", "")) -
-          Number(a.price.replace("₹", ""))
+          Number(String(b.price).replace("₹", "")) -
+          Number(String(a.price).replace("₹", ""))
       );
     }
 
     return result;
-  }, [searchTerm, availability, sortBy]);
+  }, [activeMedicines, searchTerm, availability, sortBy]);
 
   const handleSearch = () => {
     setSearchTerm(searchTerm.trim());
@@ -196,7 +255,9 @@ function MedicineSearch() {
 
   // View Details → Medicine Details Page
   const handleViewDetails = (medicine) => {
-    navigate("/medicine-details");
+    navigate(`/medicine-details?id=${medicine.id}`, {
+      state: { medicine: medicine.raw || medicine, medicineId: medicine.id },
+    });
   };
 
   const handleBack = () => {

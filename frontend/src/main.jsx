@@ -18,7 +18,7 @@ import AdminDeliveryPartners from "./pages/admin/AdminDeliveryPartners.jsx";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs.jsx";
 import AdminProfile from "./pages/admin/AdminProfile.jsx";
 
-// Phase 5: Pharmacy Portal
+// Phase 5 & 7: Pharmacy Portal & Orders
 import PharmacyLayout from "./layouts/PharmacyLayout.jsx";
 import PharmacyDashboard from "./pages/pharmacy/PharmacyDashboard.jsx";
 import PharmacyMedicines from "./pages/pharmacy/PharmacyMedicines.jsx";
@@ -26,11 +26,17 @@ import PharmacyMedicineDetail from "./pages/pharmacy/PharmacyMedicineDetail.jsx"
 import PharmacyInventory from "./pages/pharmacy/PharmacyInventory.jsx";
 import PharmacyInventoryDetail from "./pages/pharmacy/PharmacyInventoryDetail.jsx";
 import PharmacyProfile from "./pages/pharmacy/PharmacyProfile.jsx";
+import PharmacyOrders from "./pages/pharmacy/PharmacyOrders.jsx";
+import PharmacyOrderDetail from "./pages/pharmacy/PharmacyOrderDetail.jsx";
 
+// Phase 6 & 7: Customer Marketplace & Order Lifecycle
 import MedicineSearch from "./pages/medicine-search.jsx";
 import MedicineDetails from "./pages/medicine-details.jsx";
 import PharmacySelection from "./pages/pharmacy-selection.jsx";
 import Reservation from "./pages/reservation.jsx";
+import OrderConfirmation from "./pages/order-confirmation.jsx";
+import UserOrders from "./pages/user-orders.jsx";
+import UserOrderDetail from "./pages/user-order-detail.jsx";
 
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
@@ -62,7 +68,33 @@ createRoot(document.getElementById("root")).render(
             }
           />
 
-          {/* Phase 5: Production Pharmacy Portal */}
+          {/* Customer Order Management */}
+          <Route
+            path="/order-confirmation"
+            element={
+              <ProtectedRoute allowedRoles={["CUSTOMER", "ADMIN"]}>
+                <OrderConfirmation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/user/orders"
+            element={
+              <ProtectedRoute allowedRoles={["CUSTOMER", "ADMIN"]}>
+                <UserOrders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/user/orders/:id"
+            element={
+              <ProtectedRoute allowedRoles={["CUSTOMER", "ADMIN"]}>
+                <UserOrderDetail />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Phase 5 & 7: Production Pharmacy Portal */}
           <Route
             path="/pharmacy"
             element={
@@ -73,6 +105,8 @@ createRoot(document.getElementById("root")).render(
           >
             <Route index element={<PharmacyDashboard />} />
             <Route path="dashboard" element={<PharmacyDashboard />} />
+            <Route path="orders" element={<PharmacyOrders />} />
+            <Route path="orders/:id" element={<PharmacyOrderDetail />} />
             <Route path="medicines" element={<PharmacyMedicines />} />
             <Route path="medicines/:id" element={<PharmacyMedicineDetail />} />
             <Route path="inventory" element={<PharmacyInventory />} />

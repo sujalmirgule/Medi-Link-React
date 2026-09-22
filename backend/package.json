@@ -11,6 +11,7 @@
     "test:auth": "tsx src/scripts/test-auth.ts",
     "test:admin": "tsx src/scripts/test-admin.ts",
     "test:pharmacy": "tsx src/scripts/test-pharmacy.ts",
+    "test:orders": "tsx src/scripts/test-orders.ts",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {

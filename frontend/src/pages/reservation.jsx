@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import { orderService } from "../services/order";
+import { customerService } from "../services/customer";
+import { useAuth } from "../context/AuthContext";
 import {
   ArrowLeft,
   MapPin,
@@ -10,52 +13,165 @@ import {
   Clock3,
   Package,
   ChevronRight,
+  AlertTriangle,
+  RefreshCw,
+  Plus,
 } from "lucide-react";
 import "./reservation.css";
 
 const Reservation = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
 
-  const [deliveryType, setDeliveryType] = useState("pickup");
-  const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("");
+  // Selected parameters passed from pharmacy-selection or medicine-details
+  const passedMedicine = location.state?.medicine;
+  const passedPharmacy = location.state?.pharmacy;
+  const initialDeliveryType = location.state?.deliveryType || "pickup";
 
-  const medicine = {
+  const [deliveryType, setDeliveryType] = useState(initialDeliveryType);
+  const [quantity, setQuantity] = useState(1);
+
+  // Address state
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [newLabel, setNewLabel] = useState("Home");
+  const [newLine1, setNewLine1] = useState("");
+  const [newLine2, setNewLine2] = useState("");
+  const [newCity, setNewCity] = useState("Kalyan");
+  const [newState, setNewState] = useState("Maharashtra");
+  const [newPincode, setNewPincode] = useState("421301");
+  const [savingAddress, setSavingAddress] = useState(false);
+
+  // Submission state
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [orderError, setOrderError] = useState(null);
+
+  // Fallback demo data if navigated to directly
+  const medicine = passedMedicine || {
+    id: "sample",
     name: "Paracetamol 500mg",
     generic: "Paracetamol",
     pack: "10 Tablets",
     price: 28,
   };
 
-  const pharmacy = {
-    name: "Zeno Health Pharmacy",
-    distance: "0.8 km",
+  const pharmacy = passedPharmacy || {
+    id: "sample",
+    name: "LifeCare Pharmacy",
+    distance: "1.2 km",
     rating: "4.8",
     address: "Kalyan, Maharashtra",
     pickupTime: "20–30 min",
+    price: 28,
   };
 
-  const deliveryCharge = deliveryType === "delivery" ? 30 : 0;
-  const total = medicine.price + deliveryCharge;
+  const availableStock = pharmacy.availableStock || 50;
 
-  const handleConfirm = () => {
-    if (deliveryType === "delivery" && (!address || !phone)) {
-      alert("Please enter your delivery address and phone number.");
+  // Load customer addresses if logged in
+  useEffect(() => {
+    if (user) {
+      customerService
+        .getCustomerAddresses()
+        .then((data) => {
+          setAddresses(data);
+          const defaultAddr = data.find((a) => a.isDefault) || data[0];
+          if (defaultAddr) {
+            setSelectedAddressId(defaultAddr.id);
+          } else {
+            setShowNewAddressForm(true);
+          }
+        })
+        .catch(() => {
+          // Addresses optional for pickup
+        });
+    }
+  }, [user]);
+
+  const unitPrice = Number(pharmacy.price || medicine.price || 28);
+  const deliveryCharge = deliveryType === "delivery" ? 30 : 0;
+  const subtotal = unitPrice * quantity;
+  const total = subtotal + deliveryCharge;
+
+  const handleSaveNewAddress = async (e) => {
+    e.preventDefault();
+    if (!newLine1.trim() || !newCity.trim() || !newPincode.trim()) {
+      setOrderError("Please complete all required address fields.");
       return;
     }
 
-    navigate("/order-confirmation");
+    setSavingAddress(true);
+    setOrderError(null);
+    try {
+      const created = await customerService.createCustomerAddress({
+        label: newLabel,
+        addressLine1: newLine1.trim(),
+        addressLine2: newLine2.trim() || null,
+        city: newCity.trim(),
+        state: newState.trim(),
+        pincode: newPincode.trim(),
+        isDefault: true,
+      });
+
+      setAddresses((prev) => [created, ...prev]);
+      setSelectedAddressId(created.id);
+      setShowNewAddressForm(false);
+    } catch (err) {
+      setOrderError(err.message || "Failed to save new delivery address.");
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!user) {
+      navigate("/login", { state: { returnTo: location.pathname } });
+      return;
+    }
+
+    if (deliveryType === "delivery") {
+      if (!selectedAddressId) {
+        setOrderError("Please select or enter a delivery address for Home Delivery.");
+        return;
+      }
+    }
+
+    setIsPlacingOrder(true);
+    setOrderError(null);
+
+    try {
+      // Create real order in backend with atomic stock reservation
+      const createdOrder = await orderService.createOrder({
+        pharmacyId: pharmacy.pharmacyId || pharmacy.pharmacy?.id || pharmacy.id,
+        fulfillmentType: deliveryType === "delivery" ? "HOME_DELIVERY" : "PICKUP",
+        deliveryAddressId: deliveryType === "delivery" ? selectedAddressId : null,
+        items: [
+          {
+            pharmacyMedicineId: pharmacy.pharmacyMedicineId || pharmacy.id,
+            quantity,
+          },
+        ],
+      });
+
+      navigate("/order-confirmation", {
+        state: { order: createdOrder },
+      });
+    } catch (err) {
+      setOrderError(err.message || "Failed to place order. Please try again.");
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   return (
     <div className="reservation-page">
-
       {/* HEADER */}
       <header className="reservation-header">
         <div className="reservation-header-inner">
           <button
             className="reservation-back-btn"
-            onClick={() => navigate("/pharmacy-selection")}
+            onClick={() => navigate(-1)}
           >
             <ArrowLeft size={19} />
             Back
@@ -66,7 +182,7 @@ const Reservation = () => {
             <span className="step-line"></span>
             <span className="step-active">2</span>
             <span className="step-line"></span>
-            <span className="step-muted">3</span>
+            <span className="step-active">3</span>
           </div>
 
           <div className="secure-check">
@@ -78,26 +194,42 @@ const Reservation = () => {
 
       {/* MAIN */}
       <main className="reservation-container">
-
         <div className="reservation-heading">
           <span className="reservation-eyebrow">
             <Package size={15} />
-            RESERVE MEDICINE
+            ORDER &amp; RESERVATION
           </span>
 
-          <h1>Complete your reservation</h1>
+          <h1>Complete your order</h1>
 
           <p>
-            Choose how you'd like to receive your medicine and confirm
-            your reservation.
+            Review medicine reservation details, select fulfillment, and place your order.
           </p>
         </div>
 
-        <div className="reservation-layout">
+        {orderError && (
+          <div
+            style={{
+              background: "#fee2e2",
+              border: "1px solid #fecaca",
+              color: "#991b1b",
+              borderRadius: "10px",
+              padding: "14px 18px",
+              marginBottom: "24px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              fontSize: "14px",
+            }}
+          >
+            <AlertTriangle size={20} />
+            <span>{orderError}</span>
+          </div>
+        )}
 
+        <div className="reservation-layout">
           {/* LEFT */}
           <section className="reservation-main">
-
             {/* MEDICINE */}
             <div className="reservation-card medicine-summary-card">
               <div className="card-title">
@@ -106,21 +238,45 @@ const Reservation = () => {
                   <h2>{medicine.name}</h2>
                 </div>
 
-                <div className="medicine-price">
-                  ₹{medicine.price}
-                </div>
+                <div className="medicine-price">&#8377;{unitPrice.toFixed(2)}</div>
               </div>
 
               <div className="medicine-summary-details">
-                <span>{medicine.generic}</span>
-                <span>•</span>
-                <span>{medicine.pack}</span>
+                <span>{medicine.generic || medicine.genericName}</span>
+                <span>&bull;</span>
+                <span>{medicine.pack || medicine.strength || "Standard Unit"}</span>
+              </div>
+
+              {/* Quantity Selector */}
+              <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "12px" }}>
+                <span style={{ fontSize: "13px", fontWeight: "600", color: "#64748b" }}>Order Quantity:</span>
+                <select
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    fontWeight: "700",
+                    fontSize: "14px",
+                    color: "#0f172a",
+                    background: "#f8fafc",
+                  }}
+                >
+                  {[...Array(Math.min(10, availableStock || 10))].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1} unit{i > 0 ? "s" : ""}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: "12px", color: "#10b981", fontWeight: "600" }}>
+                  ({availableStock} available in stock)
+                </span>
               </div>
             </div>
 
             {/* PHARMACY */}
             <div className="reservation-card">
-
               <div className="section-title">
                 <div className="section-icon">
                   <Store size={19} />
@@ -128,7 +284,7 @@ const Reservation = () => {
 
                 <div>
                   <h2>Selected Pharmacy</h2>
-                  <p>Your medicine will be reserved here</p>
+                  <p>Stock will be reserved at this verified store</p>
                 </div>
               </div>
 
@@ -139,37 +295,34 @@ const Reservation = () => {
 
                 <div className="pharmacy-info">
                   <div className="pharmacy-name-row">
-                    <h3>{pharmacy.name}</h3>
+                    <h3>{pharmacy.pharmacy?.name || pharmacy.name}</h3>
 
                     <span className="open-badge">
                       <CheckCircle2 size={13} />
-                      Open
+                      Verified
                     </span>
                   </div>
 
                   <div className="pharmacy-meta">
                     <span>
                       <MapPin size={14} />
-                      {pharmacy.distance}
+                      {pharmacy.pharmacy?.city || pharmacy.city || "Nearby"}
                     </span>
-
-                    <span>★ {pharmacy.rating}</span>
-
                     <span>
                       <Clock3 size={14} />
-                      {pharmacy.pickupTime}
+                      {pharmacy.pickupTime || "Fast Fulfillment"}
                     </span>
                   </div>
 
                   <p className="pharmacy-address">
-                    {pharmacy.address}
+                    {pharmacy.pharmacy?.address || pharmacy.address}
                   </p>
                 </div>
               </div>
 
               <button
                 className="change-pharmacy-btn"
-                onClick={() => navigate("/pharmacy-selection")}
+                onClick={() => navigate("/pharmacy-selection", { state: { medicine } })}
               >
                 Change Pharmacy
               </button>
@@ -177,7 +330,6 @@ const Reservation = () => {
 
             {/* RECEIVE METHOD */}
             <div className="reservation-card">
-
               <div className="section-title">
                 <div className="section-icon">
                   <Truck size={19} />
@@ -185,16 +337,14 @@ const Reservation = () => {
 
                 <div>
                   <h2>How would you like to receive it?</h2>
-                  <p>Select your preferred option</p>
+                  <p>Select counter pickup or doorstep delivery</p>
                 </div>
               </div>
 
               <div className="receive-methods">
-
                 <button
-                  className={`receive-method ${
-                    deliveryType === "pickup" ? "selected" : ""
-                  }`}
+                  type="button"
+                  className={`receive-method ${deliveryType === "pickup" ? "selected" : ""}`}
                   onClick={() => setDeliveryType("pickup")}
                 >
                   <div className="method-icon">
@@ -203,22 +353,16 @@ const Reservation = () => {
 
                   <div className="method-content">
                     <h3>Pickup from Pharmacy</h3>
-                    <p>Ready in {pharmacy.pickupTime}</p>
+                    <p>Collect at pharmacy counter</p>
                     <strong>FREE</strong>
                   </div>
 
-                  {deliveryType === "pickup" && (
-                    <CheckCircle2
-                      className="method-check"
-                      size={22}
-                    />
-                  )}
+                  {deliveryType === "pickup" && <CheckCircle2 className="method-check" size={22} />}
                 </button>
 
                 <button
-                  className={`receive-method ${
-                    deliveryType === "delivery" ? "selected" : ""
-                  }`}
+                  type="button"
+                  className={`receive-method ${deliveryType === "delivery" ? "selected" : ""}`}
                   onClick={() => setDeliveryType("delivery")}
                 >
                   <div className="method-icon">
@@ -228,68 +372,155 @@ const Reservation = () => {
                   <div className="method-content">
                     <h3>Home Delivery</h3>
                     <p>Delivered to your doorstep</p>
-                    <strong>₹30 delivery</strong>
+                    <strong>&#8377;30 delivery</strong>
                   </div>
 
-                  {deliveryType === "delivery" && (
-                    <CheckCircle2
-                      className="method-check"
-                      size={22}
-                    />
-                  )}
+                  {deliveryType === "delivery" && <CheckCircle2 className="method-check" size={22} />}
                 </button>
-
               </div>
 
-              {/* DELIVERY DETAILS */}
+              {/* DELIVERY ADDRESS SELECTION */}
               {deliveryType === "delivery" && (
-                <div className="delivery-details">
+                <div style={{ marginTop: "20px", borderTop: "1px solid #f1f5f9", paddingTop: "16px" }}>
+                  <label style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", display: "block", marginBottom: "8px" }}>
+                    Select Delivery Address
+                  </label>
 
-                  <label>Delivery Address</label>
+                  {addresses.length > 0 && !showNewAddressForm ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "12px" }}>
+                      {addresses.map((addr) => (
+                        <div
+                          key={addr.id}
+                          onClick={() => setSelectedAddressId(addr.id)}
+                          style={{
+                            padding: "12px 16px",
+                            borderRadius: "8px",
+                            border: selectedAddressId === addr.id ? "2px solid #087ac7" : "1px solid #e2e8f0",
+                            background: selectedAddressId === addr.id ? "#f0f9ff" : "#ffffff",
+                            cursor: "pointer",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <div>
+                            <span style={{ fontWeight: "700", fontSize: "13px", color: "#0f172a" }}>
+                              {addr.label || "Home"}
+                            </span>
+                            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
+                              {addr.addressLine1}, {addr.city} - {addr.pincode}
+                            </div>
+                          </div>
+                          {selectedAddressId === addr.id && <CheckCircle2 size={18} color="#087ac7" />}
+                        </div>
+                      ))}
 
-                  <textarea
-                    placeholder="Enter your complete delivery address..."
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                  />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewAddressForm(true)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "transparent",
+                          border: "none",
+                          color: "#087ac7",
+                          cursor: "pointer",
+                          fontSize: "13px",
+                          fontWeight: "600",
+                          padding: "6px 0",
+                        }}
+                      >
+                        <Plus size={15} /> Add a different address
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
+                        <span style={{ fontWeight: "700", fontSize: "13px" }}>Add New Delivery Address</span>
+                        {addresses.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowNewAddressForm(false)}
+                            style={{ background: "transparent", border: "none", color: "#64748b", cursor: "pointer", fontSize: "12px" }}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
 
-                  <label>Phone Number</label>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                        <div style={{ gridColumn: "span 2" }}>
+                          <input
+                            type="text"
+                            placeholder="Flat, House no., Building, Apartment *"
+                            value={newLine1}
+                            onChange={(e) => setNewLine1(e.target.value)}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px" }}
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="City *"
+                            value={newCity}
+                            onChange={(e) => setNewCity(e.target.value)}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px" }}
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Pincode (6 digits) *"
+                            value={newPincode}
+                            onChange={(e) => setNewPincode(e.target.value)}
+                            style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "13px" }}
+                          />
+                        </div>
+                      </div>
 
-                  <input
-                    type="tel"
-                    placeholder="Enter your mobile number"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-
+                      <button
+                        type="button"
+                        onClick={handleSaveNewAddress}
+                        disabled={savingAddress}
+                        style={{
+                          marginTop: "12px",
+                          padding: "8px 16px",
+                          background: "#087ac7",
+                          color: "#ffffff",
+                          border: "none",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {savingAddress ? "Saving Address..." : "Use This Address"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
-
             </div>
 
             {/* INFO */}
             <div className="reservation-info">
               <ShieldCheck size={19} />
-
               <div>
-                <strong>Safe & Secure Reservation</strong>
+                <strong>Atomic Inventory Guarantee</strong>
                 <p>
-                  Your medicine will be reserved at the selected
-                  pharmacy. You can collect it or receive it at home.
+                  Your medicine stock is atomically reserved at the selected pharmacy upon order placement.
                 </p>
               </div>
             </div>
-
           </section>
 
           {/* RIGHT SUMMARY */}
           <aside className="reservation-sidebar">
-
             <div className="order-summary">
-
               <div className="summary-header">
                 <h2>Reservation Summary</h2>
-                <span>1 item</span>
+                <span>{quantity} item(s)</span>
               </div>
 
               <div className="summary-medicine">
@@ -299,54 +530,59 @@ const Reservation = () => {
 
                 <div>
                   <h3>{medicine.name}</h3>
-                  <p>{medicine.pack}</p>
+                  <p>
+                    &#8377;{unitPrice.toFixed(2)} &times; {quantity}
+                  </p>
                 </div>
 
-                <strong>₹{medicine.price}</strong>
+                <strong>&#8377;{subtotal.toFixed(2)}</strong>
               </div>
 
               <div className="summary-divider"></div>
 
               <div className="summary-row">
-                <span>Medicine price</span>
-                <strong>₹{medicine.price}</strong>
+                <span>Medicine Subtotal</span>
+                <strong>&#8377;{subtotal.toFixed(2)}</strong>
               </div>
 
               <div className="summary-row">
-                <span>Delivery</span>
-                <strong>
-                  {deliveryCharge === 0
-                    ? "FREE"
-                    : `₹${deliveryCharge}`}
-                </strong>
+                <span>Delivery Fee</span>
+                <strong>{deliveryCharge === 0 ? "FREE" : `₹${deliveryCharge.toFixed(2)}`}</strong>
               </div>
 
               <div className="summary-divider"></div>
 
               <div className="summary-total">
-                <span>Total</span>
-                <strong>₹{total}</strong>
+                <span>Total Amount</span>
+                <strong>&#8377;{total.toFixed(2)}</strong>
               </div>
 
               <button
                 className="confirm-reservation-btn"
                 onClick={handleConfirm}
+                disabled={isPlacingOrder}
+                style={{ opacity: isPlacingOrder ? 0.7 : 1 }}
               >
-                Confirm Reservation
-                <ChevronRight size={19} />
+                {isPlacingOrder ? (
+                  <>
+                    <RefreshCw size={18} className="pharmacy-spinner" />
+                    Placing Order...
+                  </>
+                ) : (
+                  <>
+                    Place Order Now
+                    <ChevronRight size={19} />
+                  </>
+                )}
               </button>
 
               <div className="summary-trust">
                 <ShieldCheck size={16} />
-                Secure & trusted by MediLink
+                Atomic stock reservation guaranteed
               </div>
-
             </div>
-
           </aside>
-
         </div>
-
       </main>
     </div>
   );

@@ -5,6 +5,7 @@ import {
   Store,
   Package,
   Layers,
+  ShoppingBag,
   User,
   LogOut,
   Menu,
@@ -48,6 +49,12 @@ export function PharmacyLayout() {
       icon: Store,
       end: true,
       requiresVerified: false,
+    },
+    {
+      to: "/pharmacy/orders",
+      label: "Customer Orders",
+      icon: ShoppingBag,
+      requiresVerified: true,
     },
     {
       to: "/pharmacy/medicines",

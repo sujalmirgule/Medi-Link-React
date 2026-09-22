@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { customerService } from "../services/customer";
 import {
   ArrowLeft,
   Search,
@@ -21,15 +22,22 @@ import "./pharmacy-selection.css";
 
 const PharmacySelection = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const medicine = {
-    name: "Paracetamol 500mg",
-    generic: "Paracetamol",
-    pack: "10 Tablets",
-    price: 28,
-  };
+  const passedMedicine = location.state?.medicine;
+  const passedPharmacy = location.state?.selectedPharmacy;
+  const initialDeliveryType = location.state?.deliveryType || "pickup";
 
-  const pharmacies = [
+  const [medicine, setMedicine] = useState(
+    passedMedicine || {
+      name: "Paracetamol 500mg",
+      generic: "Paracetamol",
+      pack: "10 Tablets",
+      price: 28,
+    }
+  );
+
+  const initialPharmacies = [
     {
       id: 1,
       name: "Zeno Health Pharmacy",
@@ -92,18 +100,67 @@ const PharmacySelection = () => {
     },
   ];
 
+  const [pharmacies, setPharmacies] = useState(initialPharmacies);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedPharmacy, setSelectedPharmacy] = useState(null);
-  const [deliveryType, setDeliveryType] = useState("pickup");
+  const [selectedPharmacy, setSelectedPharmacy] = useState(
+    passedPharmacy?.pharmacyId || passedPharmacy?.id || 1
+  );
+  const [deliveryType, setDeliveryType] = useState(initialDeliveryType);
+
+  useEffect(() => {
+    const medId = medicine.id;
+    if (!medId) return;
+
+    let active = true;
+    customerService
+      .getMedicinePharmacies(medId)
+      .then((offerings) => {
+        if (!active) return;
+        if (Array.isArray(offerings) && offerings.length > 0) {
+          const mapped = offerings.map((p, idx) => ({
+            id: p.pharmacyId,
+            pharmacyId: p.pharmacyId,
+            pharmacyMedicineId: p.pharmacyMedicineId,
+            name: p.pharmacyName,
+            distance: `${(0.8 + idx * 0.4).toFixed(1)} km`,
+            rating: String(p.rating || "4.8"),
+            reviews: "120",
+            status: "Open",
+            timing: "Open until 10:30 PM",
+            price: p.price,
+            stock: p.isAvailable ? "In Stock" : "Out of Stock",
+            stockCount: `${p.availableStock} available`,
+            availableStock: p.availableStock,
+            delivery: p.estimatedDeliveryTime || "20–30 min",
+            address: p.address,
+            phone: p.phone,
+          }));
+          setPharmacies(mapped);
+          setSelectedPharmacy((prev) => {
+            const exists = mapped.find((m) => m.id === prev);
+            return exists ? prev : mapped[0]?.id;
+          });
+        }
+      })
+      .catch(() => {
+        // keep fallback
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [medicine.id]);
 
   const filteredPharmacies = useMemo(() => {
     return pharmacies.filter((pharmacy) =>
       pharmacy.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [searchTerm]);
+  }, [pharmacies, searchTerm]);
 
   const selected =
-    pharmacies.find((pharmacy) => pharmacy.id === selectedPharmacy) || null;
+    pharmacies.find((pharmacy) => pharmacy.id === selectedPharmacy) ||
+    pharmacies[0] ||
+    null;
 
   const deliveryCharge = deliveryType === "delivery" ? 30 : 0;
   const total = (selected?.price || medicine.price) + deliveryCharge;
@@ -117,7 +174,16 @@ const PharmacySelection = () => {
     navigate("/reservation", {
       state: {
         medicine,
-        pharmacy: selected,
+        pharmacy: {
+          id: selected.pharmacyId || selected.id,
+          pharmacyId: selected.pharmacyId || selected.id,
+          pharmacyMedicineId: selected.pharmacyMedicineId || selected.id,
+          name: selected.name,
+          address: selected.address,
+          price: selected.price,
+          availableStock: selected.availableStock,
+          phone: selected.phone,
+        },
         deliveryType,
       },
     });

@@ -180,6 +180,11 @@ function UserDashboard() {
       navigate("/medicines");
       return;
     }
+
+    if (label === "My Orders") {
+      navigate("/user/orders");
+      return;
+    }
   };
 
   // ==========================================
@@ -193,12 +198,12 @@ function UserDashboard() {
     }
 
     if (title === "Nearby Pharmacies") {
-      setActiveMenu("Nearby Pharmacies");
+      navigate("/pharmacies");
       return;
     }
 
     if (title === "My Orders") {
-      setActiveMenu("My Orders");
+      navigate("/user/orders");
       return;
     }
 
@@ -788,7 +793,7 @@ function UserDashboard() {
                   Recent Orders
                 </h2>
 
-                <button>
+                <button onClick={() => navigate("/user/orders")}>
                   See All
                   <ArrowRight size={14} />
                 </button>
@@ -842,7 +847,10 @@ function UserDashboard() {
                     </div>
 
 
-                    <button className="view-order">
+                    <button
+                      className="view-order"
+                      onClick={() => navigate("/user/orders")}
+                    >
                       View Details
                     </button>
 

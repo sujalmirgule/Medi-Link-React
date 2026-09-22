@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { customerService } from "../services/customer";
 import {
   ArrowLeft,
   MapPin,
@@ -21,10 +22,13 @@ import "./medicine-details.css";
 
 function MedicineDetails() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [deliveryType, setDeliveryType] = useState("pickup");
+  const [deliveryType, setDeliveryType] = useState(
+    location.state?.deliveryType || "pickup"
+  );
 
-  const medicine = {
+  const initialMedicine = location.state?.medicine || {
     name: "Paracetamol 500mg",
     genericName: "Paracetamol",
     manufacturer: "Cipla Ltd.",
@@ -37,7 +41,7 @@ function MedicineDetails() {
     category: "Pain Relief & Fever",
   };
 
-  const pharmacies = [
+  const initialPharmacies = [
     {
       id: 1,
       name: "Zeno Health Pharmacy",
@@ -88,12 +92,74 @@ function MedicineDetails() {
     },
   ];
 
+  const [medicine, setMedicine] = useState(initialMedicine);
+  const [pharmacies, setPharmacies] = useState(initialPharmacies);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const medId = searchParams.get("id") || location.state?.medicineId || location.state?.medicine?.id;
+    if (!medId) return;
+
+    let active = true;
+    Promise.allSettled([
+      customerService.getMedicine(medId),
+      customerService.getMedicinePharmacies(medId),
+    ]).then(([medResult, pharmResult]) => {
+      if (!active) return;
+      if (medResult.status === "fulfilled" && medResult.value) {
+        const d = medResult.value;
+        setMedicine((prev) => ({
+          ...prev,
+          id: d.id,
+          name: d.name,
+          genericName: d.genericName,
+          manufacturer: d.manufacturer || prev.manufacturer,
+          composition: `${d.genericName} ${d.strength || ""}`.trim(),
+          packSize: d.dosageForm ? `10 ${d.dosageForm}s` : prev.packSize,
+          category: d.category?.name || prev.category,
+        }));
+      }
+      if (pharmResult.status === "fulfilled" && Array.isArray(pharmResult.value) && pharmResult.value.length > 0) {
+        const mapped = pharmResult.value.map((p, idx) => ({
+          id: p.pharmacyId,
+          pharmacyId: p.pharmacyId,
+          pharmacyMedicineId: p.pharmacyMedicineId,
+          name: p.pharmacyName,
+          distance: `${(0.8 + idx * 0.4).toFixed(1)} km`,
+          rating: p.rating || 4.7,
+          status: "Open",
+          time: "Open until 10:30 PM",
+          price: p.price,
+          stock: p.isAvailable ? "In Stock" : "Out of Stock",
+          stockCount: `${p.availableStock} available`,
+          delivery: p.estimatedDeliveryTime || "20–30 min",
+          address: p.address,
+          phone: p.phone,
+        }));
+        setPharmacies(mapped);
+        if (mapped[0]?.price) {
+          setMedicine((prev) => ({ ...prev, price: mapped[0].price }));
+        }
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [location.search, location.state]);
+
   const handleBack = () => {
     navigate("/medicines");
   };
 
-  const handleSelectPharmacy = () => {
-    navigate("/pharmacy-selection");
+  const handleSelectPharmacy = (chosenPharmacy = null) => {
+    navigate("/pharmacy-selection", {
+      state: {
+        medicine,
+        selectedPharmacy: chosenPharmacy || pharmacies[0] || null,
+        deliveryType,
+      },
+    });
   };
 
   return (
@@ -503,7 +569,7 @@ function MedicineDetails() {
 
                   <button
                     className="pharmacy-select-btn"
-                    onClick={handleSelectPharmacy}
+                    onClick={() => handleSelectPharmacy(pharmacy)}
                   >
                     Select
                     <ChevronRight size={16} />

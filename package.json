@@ -12,7 +12,8 @@
     "test:auth": "npm run test:auth --prefix backend",
     "test:admin": "npm run test:admin --prefix backend",
     "test:pharmacy": "npm run test:pharmacy --prefix backend",
-    "test": "npm run test:auth && npm run test:admin && npm run test:pharmacy"
+    "test:orders": "npm run test:orders --prefix backend",
+    "test": "npm run test:auth && npm run test:admin && npm run test:pharmacy && npm run test:orders"
   },
   "keywords": [
     "medilink",
