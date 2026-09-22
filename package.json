@@ -11,7 +11,8 @@
     "lint:frontend": "npm run lint --prefix frontend",
     "test:auth": "npm run test:auth --prefix backend",
     "test:admin": "npm run test:admin --prefix backend",
-    "test": "npm run test:auth && npm run test:admin"
+    "test:pharmacy": "npm run test:pharmacy --prefix backend",
+    "test": "npm run test:auth && npm run test:admin && npm run test:pharmacy"
   },
   "keywords": [
     "medilink",

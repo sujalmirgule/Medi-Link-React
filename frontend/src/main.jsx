@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import "./index.css";
 
@@ -8,7 +8,6 @@ import App from "./App.jsx";
 import Login from "./pages/login.jsx";
 import Register from "./pages/register.jsx";
 import UserDashboard from "./pages/user-dashboard.jsx";
-import PharmacyDashboard from "./pages/pharmacy-dashboard.jsx";
 import DeliveryDashboard from "./pages/delivery-dashboard.jsx";
 import AdminLayout from "./layouts/AdminLayout.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
@@ -18,6 +17,16 @@ import AdminPharmacies from "./pages/admin/AdminPharmacies.jsx";
 import AdminDeliveryPartners from "./pages/admin/AdminDeliveryPartners.jsx";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs.jsx";
 import AdminProfile from "./pages/admin/AdminProfile.jsx";
+
+// Phase 5: Pharmacy Portal
+import PharmacyLayout from "./layouts/PharmacyLayout.jsx";
+import PharmacyDashboard from "./pages/pharmacy/PharmacyDashboard.jsx";
+import PharmacyMedicines from "./pages/pharmacy/PharmacyMedicines.jsx";
+import PharmacyMedicineDetail from "./pages/pharmacy/PharmacyMedicineDetail.jsx";
+import PharmacyInventory from "./pages/pharmacy/PharmacyInventory.jsx";
+import PharmacyInventoryDetail from "./pages/pharmacy/PharmacyInventoryDetail.jsx";
+import PharmacyProfile from "./pages/pharmacy/PharmacyProfile.jsx";
+
 import MedicineSearch from "./pages/medicine-search.jsx";
 import MedicineDetails from "./pages/medicine-details.jsx";
 import PharmacySelection from "./pages/pharmacy-selection.jsx";
@@ -35,20 +44,12 @@ createRoot(document.getElementById("root")).render(
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Role-Protected Dashboards */}
+          {/* Role-Protected Customer & Delivery Dashboards */}
           <Route
             path="/user/dashboard"
             element={
               <ProtectedRoute allowedRoles={["CUSTOMER", "ADMIN"]}>
                 <UserDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pharmacy/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={["PHARMACY", "ADMIN"]}>
-                <PharmacyDashboard />
               </ProtectedRoute>
             }
           />
@@ -60,6 +61,27 @@ createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             }
           />
+
+          {/* Phase 5: Production Pharmacy Portal */}
+          <Route
+            path="/pharmacy"
+            element={
+              <ProtectedRoute allowedRoles={["PHARMACY", "ADMIN"]}>
+                <PharmacyLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<PharmacyDashboard />} />
+            <Route path="dashboard" element={<PharmacyDashboard />} />
+            <Route path="medicines" element={<PharmacyMedicines />} />
+            <Route path="medicines/:id" element={<PharmacyMedicineDetail />} />
+            <Route path="inventory" element={<PharmacyInventory />} />
+            <Route path="inventory/:id" element={<PharmacyInventoryDetail />} />
+            <Route path="profile" element={<PharmacyProfile />} />
+          </Route>
+
+          {/* Legacy Pharmacy Dashboard Redirect */}
+          <Route path="/pharmacy-dashboard" element={<Navigate to="/pharmacy/dashboard" replace />} />
 
           {/* Phase 4: Production Admin Portal */}
           <Route

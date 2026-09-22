@@ -10,6 +10,7 @@
     "start": "node dist/server.js",
     "test:auth": "tsx src/scripts/test-auth.ts",
     "test:admin": "tsx src/scripts/test-admin.ts",
+    "test:pharmacy": "tsx src/scripts/test-pharmacy.ts",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {

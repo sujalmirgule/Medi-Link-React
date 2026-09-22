@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from "express";
+import { ZodError } from "zod";
 import { env } from "../config/env";
 
 export interface AppError extends Error {
   status?: number;
   statusCode?: number;
+  errors?: any;
 }
 
 /**
@@ -11,14 +13,19 @@ export interface AppError extends Error {
  * Returns consistent JSON response and suppresses internal stack traces in production.
  */
 export function errorHandler(
-  err: AppError,
+  err: any,
   req: Request,
   res: Response,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction
 ): void {
-  const statusCode = err.status || err.statusCode || 500;
-  const message = err.message || "Something went wrong";
+  let statusCode = err.status || err.statusCode || 500;
+  let message = err.message || "Something went wrong";
+
+  if (err instanceof ZodError || err.name === "ZodError") {
+    statusCode = 400;
+    message = err.errors?.[0]?.message || "Validation failed";
+  }
 
   if (env.isDevelopment) {
     console.error(`[Error] ${req.method} ${req.path} -> ${statusCode}: ${message}`);
@@ -30,6 +37,7 @@ export function errorHandler(
   res.status(statusCode).json({
     success: false,
     message,
+    ...(err.errors && { errors: err.errors }),
     ...(env.isDevelopment && { stack: err.stack }),
   });
 }
