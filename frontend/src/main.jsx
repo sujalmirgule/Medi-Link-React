@@ -58,6 +58,10 @@ import PharmacyNotifications from "./pages/pharmacy/PharmacyNotifications.jsx";
 import DeliveryNotifications from "./pages/delivery/DeliveryNotifications.jsx";
 import AdminNotifications from "./pages/admin/AdminNotifications.jsx";
 
+// Phase 11: Reviews, Ratings & Discounts
+import AdminDiscounts from "./pages/admin/AdminDiscounts.jsx";
+import AdminReviews from "./pages/admin/AdminReviews.jsx";
+
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 
@@ -187,6 +191,9 @@ createRoot(document.getElementById("root")).render(
             <Route path="settlements" element={<AdminSettlements />} />
             {/* Phase 10: Notifications */}
             <Route path="notifications" element={<AdminNotifications />} />
+            {/* Phase 11: Reviews & Discounts */}
+            <Route path="discounts" element={<AdminDiscounts />} />
+            <Route path="reviews" element={<AdminReviews />} />
           </Route>
 
           {/* Customer Medicine Browsing Pages */}

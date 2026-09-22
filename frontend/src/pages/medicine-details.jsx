@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { customerService } from "../services/customer";
+import { reviewService } from "../services/review";
 import {
   ArrowLeft,
   MapPin,
@@ -15,6 +16,8 @@ import {
   Heart,
   Share2,
   Info,
+  MessageSquare,
+  UserCheck,
 } from "lucide-react";
 
 import logo from "../assets/medilink-logo.png";
@@ -27,6 +30,13 @@ function MedicineDetails() {
   const [deliveryType, setDeliveryType] = useState(
     location.state?.deliveryType || "pickup"
   );
+
+  const [reviewsData, setReviewsData] = useState({
+    items: [],
+    pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    aggregate: { averageRating: 0, totalReviews: 0 },
+  });
+  const [loadingReviews, setLoadingReviews] = useState(false);
 
   const initialMedicine = location.state?.medicine || {
     name: "Paracetamol 500mg",
@@ -101,10 +111,12 @@ function MedicineDetails() {
     if (!medId) return;
 
     let active = true;
+    setLoadingReviews(true);
     Promise.allSettled([
       customerService.getMedicine(medId),
       customerService.getMedicinePharmacies(medId),
-    ]).then(([medResult, pharmResult]) => {
+      reviewService.getMedicineReviews(medId),
+    ]).then(([medResult, pharmResult, reviewsResult]) => {
       if (!active) return;
       if (medResult.status === "fulfilled" && medResult.value) {
         const d = medResult.value;
@@ -141,6 +153,18 @@ function MedicineDetails() {
           setMedicine((prev) => ({ ...prev, price: mapped[0].price }));
         }
       }
+      if (reviewsResult.status === "fulfilled" && reviewsResult.value) {
+        const revs = reviewsResult.value;
+        setReviewsData(revs);
+        if (revs.aggregate && revs.aggregate.totalReviews > 0) {
+          setMedicine((prev) => ({
+            ...prev,
+            rating: revs.aggregate.averageRating,
+            reviews: revs.aggregate.totalReviews,
+          }));
+        }
+      }
+      setLoadingReviews(false);
     });
 
     return () => {
@@ -671,6 +695,94 @@ function MedicineDetails() {
 
           </div>
 
+        </section>
+
+
+        {/* ================= CUSTOMER REVIEWS & RATINGS ================= */}
+        <section className="medicine-reviews-section" style={{ marginTop: "40px", background: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", padding: "28px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "16px" }}>
+            <div>
+              <span style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.08em", color: "#087ac7", textTransform: "uppercase" }}>
+                CUSTOMER REVIEWS & RATINGS
+              </span>
+              <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#0f172a", marginTop: "4px" }}>
+                Verified Purchaser Feedback
+              </h2>
+            </div>
+
+            {reviewsData.aggregate.totalReviews > 0 ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", background: "#f8fafc", padding: "10px 18px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#f59e0b", fontSize: "20px", fontWeight: 800 }}>
+                  <Star size={20} fill="#f59e0b" />
+                  <span>{reviewsData.aggregate.averageRating.toFixed(1)}</span>
+                </div>
+                <div style={{ height: "24px", width: "1px", background: "#cbd5e1" }} />
+                <span style={{ fontSize: "13px", color: "#64748b", fontWeight: 600 }}>
+                  {reviewsData.aggregate.totalReviews} verified {reviewsData.aggregate.totalReviews === 1 ? "review" : "reviews"}
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          {reviewsData.items.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 20px", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
+              <MessageSquare size={32} style={{ color: "#94a3b8", margin: "0 auto 12px" }} />
+              <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
+                No reviews yet
+              </h3>
+              <p style={{ fontSize: "13px", color: "#64748b", maxWidth: "450px", margin: "0 auto" }}>
+                Verified customers will be able to review this medicine after completing their order delivery.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {reviewsData.items.map((rev) => (
+                <div
+                  key={rev.id}
+                  style={{
+                    padding: "16px 20px",
+                    background: "#f8fafc",
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{ display: "flex", gap: "2px", color: "#f59e0b" }}>
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            size={15}
+                            fill={s <= rev.rating ? "#f59e0b" : "none"}
+                            color={s <= rev.rating ? "#f59e0b" : "#cbd5e1"}
+                          />
+                        ))}
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a" }}>
+                        {rev.customerName || "Verified Customer"}
+                      </span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: "11px", color: "#059669", background: "#d1fae5", padding: "2px 7px", borderRadius: "999px", fontWeight: 700 }}>
+                        <CheckCircle2 size={11} /> Verified Purchaser
+                      </span>
+                    </div>
+
+                    <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                      {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : ""}
+                    </span>
+                  </div>
+
+                  {rev.comment && (
+                    <p style={{ fontSize: "14px", color: "#334155", lineHeight: 1.5, margin: 0 }}>
+                      {rev.comment}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
 

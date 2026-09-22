@@ -4,6 +4,8 @@ import { authenticate } from "../../middleware/authenticate";
 import { authorize } from "../../middleware/authorize";
 import { requireVerifiedPharmacy } from "../../middleware/verification.middleware";
 import { OrderController } from "./order.controller";
+import { DiscountController } from "../discounts/discount.controller";
+import { ReviewController } from "../reviews/review.controller";
 
 /**
  * Customer Order Routes (/api/v1/orders)
@@ -12,8 +14,10 @@ export const orderRouter = Router();
 
 orderRouter.use(authenticate, authorize(UserRole.CUSTOMER));
 
+orderRouter.post("/preview-discount", DiscountController.previewDiscount);
 orderRouter.post("/", OrderController.createOrder);
 orderRouter.get("/", OrderController.getCustomerOrders);
+orderRouter.get("/:id/review-status", ReviewController.getOrderReviewStatus);
 orderRouter.get("/:id", OrderController.getCustomerOrderById);
 
 /**

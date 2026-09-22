@@ -128,3 +128,92 @@ Four distinct roles will be governed by Role-Based Access Control (RBAC):
 4. **ADMIN:** Platform governance, verify and approve new pharmacies, manage platform users, monitor analytics.
 
 *(Full RBAC implementation is planned for Phase 3).*
+
+---
+
+## 9. Phase 11: Reviews, Ratings & MediLink-Controlled Discounts
+
+### 9.1 Review Architecture & Schema
+The `Review` model serves as a unified entity for customer reviews and ratings across three distinct target types:
+* **Medicine Reviews:** Requires a completed order where the customer purchased the specific medicine.
+* **Pharmacy Ratings:** Requires a completed order fulfilled by that specific pharmacy.
+* **Delivery Partner Ratings:** Requires a completed/delivered order fulfilled via `HOME_DELIVERY` by the specific delivery partner.
+
+```prisma
+model Review {
+  id                String   @id @default(uuid())
+  customerId        String
+  orderId           String?  // Authoritative link to completed order
+  pharmacyId        String?
+  deliveryPartnerId String?
+  medicineId        String?
+  rating            Int      // 1 to 5 stars
+  comment           String?  // Optional text (max 1000 characters)
+  isHidden          Boolean  @default(false) // Admin soft-moderation
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  customer        User             @relation("CustomerReviews", fields: [customerId], references: [id])
+  order           Order?           @relation(fields: [orderId], references: [id])
+  pharmacy        Pharmacy?        @relation(fields: [pharmacyId], references: [id])
+  deliveryPartner DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id])
+  medicine        Medicine?        @relation(fields: [medicineId], references: [id])
+
+  @@unique([customerId, orderId, medicineId], name: "unique_medicine_review_per_order")
+  @@unique([customerId, orderId, pharmacyId], name: "unique_pharmacy_review_per_order")
+  @@unique([customerId, orderId, deliveryPartnerId], name: "unique_delivery_review_per_order")
+}
+```
+
+### 9.2 Review Eligibility & Protection Rules
+* **Purchase Verification:** Reviews are strictly allowed only for customers who placed and completed the order.
+* **State Machine Requirement:** Order status must be `COMPLETED` for medicine/pharmacy reviews, and `DELIVERED` or `COMPLETED` for delivery partner ratings.
+* **Target Isolation:** Only 1 target entity (`medicineId`, `pharmacyId`, or `deliveryPartnerId`) can be specified per review.
+* **Duplicate Protection:** Compound database unique constraints prevent duplicate submissions for the same order and target.
+* **Customer Ownership:** Customers can edit only their own review rating and comments.
+
+### 9.3 Aggregate Ratings
+* Aggregates are computed via PostgreSQL aggregate queries (`_avg`, `_count`) excluding soft-hidden reviews (`isHidden: false`).
+* Averages are rounded to 1 decimal place.
+
+### 9.4 MediLink Discount Architecture & Calculation
+* **Platform Control:** Discounts are exclusively managed by MediLink administrators. Pharmacies cannot create coupon codes.
+* **Types Supported:**
+  * `PERCENTAGE`: Calculated as `(subtotal * value) / 100`. Enforces `maxDiscount` cap if configured.
+  * `FIXED`: Direct deduction `min(value, subtotal)`.
+* **Validity Checks:**
+  * `isActive == true`
+  * `startsAt <= now <= endsAt` (if dates are specified)
+  * `subtotal >= minimumOrderAmount` (if threshold is specified)
+* **Authoritative Order Integration:**
+  * Discount calculation occurs exclusively on the backend within the atomic order creation transaction.
+  * Order total amount is calculated as `max(0, subtotal + deliveryFee - discountAmount)`.
+  * Downstream payment operations strictly charge `Order.totalAmount`.
+
+### 9.5 Phase 11 API Endpoints
+
+#### Reviews API:
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/reviews` | Customer | Submit verified review for medicine, pharmacy, or delivery partner |
+| `GET` | `/api/v1/reviews/me` | Customer | List own submitted reviews |
+| `GET` | `/api/v1/reviews/order-status/:orderId` | Customer | Get review eligibility and submitted status for an order |
+| `PATCH` | `/api/v1/reviews/:id` | Customer | Update own review rating/comment |
+| `GET` | `/api/v1/medicines/:id/reviews` | Public | List verified public reviews & aggregate rating for a medicine |
+| `GET` | `/api/v1/pharmacies/:id/rating` | Public | Get aggregate rating for a pharmacy |
+| `GET` | `/api/v1/reviews/delivery-partners/:id/rating` | Public / Auth | Get aggregate rating for a delivery partner |
+| `GET` | `/api/v1/admin/reviews` | Admin | List and search all reviews with status/rating/target filters |
+| `PATCH` | `/api/v1/admin/reviews/:id/hide` | Admin | Soft-hide / Unhide review with audit log |
+| `DELETE` | `/api/v1/admin/reviews/:id` | Admin | Permanently delete review with audit log |
+
+#### Discounts API:
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/orders/preview-discount` | Customer / Public | Preview coupon code discount calculation before checkout |
+| `POST` | `/api/v1/admin/discounts` | Admin | Create a new platform coupon code with audit log |
+| `GET` | `/api/v1/admin/discounts` | Admin | List all discount coupons with filters and pagination |
+| `GET` | `/api/v1/admin/discounts/:id` | Admin | Get single discount coupon details |
+| `PATCH` | `/api/v1/admin/discounts/:id` | Admin | Update discount coupon parameters with audit log |
+| `PATCH` | `/api/v1/admin/discounts/:id/status` | Admin | Toggle discount active/inactive status with audit log |
+| `DELETE` | `/api/v1/admin/discounts/:id` | Admin | Delete discount coupon permanently with audit log |
+

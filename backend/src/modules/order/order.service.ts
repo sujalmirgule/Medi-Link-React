@@ -14,6 +14,7 @@ import {
   OrderResponseItem,
 } from "./order.types";
 import { NotificationService } from "../notifications/notification.service";
+import { DiscountService } from "../discounts/discount.service";
 
 function badRequestError(message: string): never {
   const err = new Error(message) as any;
@@ -186,8 +187,21 @@ export class OrderService {
           ? new Prisma.Decimal(30.0)
           : new Prisma.Decimal(0.0);
 
-      const discountAmount = new Prisma.Decimal(0.0);
-      const totalAmount = subtotal.add(deliveryFee).sub(discountAmount);
+      let discountAmount = new Prisma.Decimal(0.0);
+      let appliedDiscountCode: string | null = null;
+
+      if (input.discountCode && input.discountCode.trim()) {
+        const discountCalc = await DiscountService.validateAndCalculateDiscount(
+          input.discountCode,
+          Number(subtotal),
+          tx
+        );
+        discountAmount = new Prisma.Decimal(discountCalc.discountAmount);
+        appliedDiscountCode = discountCalc.code;
+      }
+
+      const rawTotal = subtotal.add(deliveryFee).sub(discountAmount);
+      const totalAmount = rawTotal.lessThan(0) ? new Prisma.Decimal(0.0) : rawTotal;
 
       // 6. Generate deterministic unique order identifier
       const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random()
@@ -257,6 +271,9 @@ export class OrderService {
               orderNumber: createdOrder.orderNumber,
               pharmacyId: input.pharmacyId,
               fulfillmentType: input.fulfillmentType,
+              subtotal: Number(subtotal),
+              discountAmount: Number(discountAmount),
+              discountCode: appliedDiscountCode,
               totalAmount: Number(totalAmount),
               itemsCount: allocatedItems.length,
             })

@@ -18,6 +18,8 @@ import {
   ExternalLink,
   CreditCard,
   DollarSign,
+  Percent,
+  Star,
 } from "lucide-react";
 import logo from "../assets/medilink-logo.png";
 import "./admin-layout.css";
@@ -98,6 +100,16 @@ export function AdminLayout() {
       to: "/admin/settlements",
       label: "Settlements",
       icon: DollarSign,
+    },
+    {
+      to: "/admin/discounts",
+      label: "Discounts",
+      icon: Percent,
+    },
+    {
+      to: "/admin/reviews",
+      label: "Reviews",
+      icon: Star,
     },
     {
       to: "/admin/audit-logs",

@@ -11,6 +11,7 @@ export interface OrderCreateInput {
   deliveryAddressId?: string | null;
   items: OrderItemInput[];
   customerNote?: string | null;
+  discountCode?: string | null;
 }
 
 export interface OrderRejectInput {

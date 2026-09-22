@@ -17,6 +17,7 @@ export const orderCreateSchema = z
     }),
     deliveryAddressId: z.string().nullable().optional(),
     customerNote: z.string().max(500, "Customer note cannot exceed 500 characters").nullable().optional(),
+    discountCode: z.string().trim().nullable().optional(),
     items: z
       .array(orderItemInputSchema)
       .min(1, "Order must contain at least one medicine item"),

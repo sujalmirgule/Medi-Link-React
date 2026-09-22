@@ -411,6 +411,12 @@ export default function PharmacyOrderDetail() {
             <span>Delivery Fee:</span>
             <span>{order.deliveryFee > 0 ? `₹${Number(order.deliveryFee).toFixed(2)}` : "FREE"}</span>
           </div>
+          {Number(order.discountAmount || 0) > 0 && (
+            <div style={{ display: "flex", gap: "32px", color: "#16a34a", fontWeight: "600" }}>
+              <span>MediLink Platform Discount:</span>
+              <span>-&#8377;{Number(order.discountAmount).toFixed(2)}</span>
+            </div>
+          )}
           <div
             style={{
               display: "flex",

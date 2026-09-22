@@ -39,4 +39,13 @@ router.use("/admin/settlements", adminSettlementRouter);
 // Phase 10: Notifications
 router.use("/notifications", notificationRouter);
 
+// Phase 11: Reviews, Ratings & Discounts
+import { reviewRouter, adminReviewRouter } from "../../modules/reviews/review.routes";
+import { discountRouter, adminDiscountRouter } from "../../modules/discounts/discount.routes";
+
+router.use("/reviews", reviewRouter);
+router.use("/discounts", discountRouter);
+router.use("/admin/reviews", adminReviewRouter);
+router.use("/admin/discounts", adminDiscountRouter);
+
 export default router;

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { orderService } from "../services/order";
 import { paymentService } from "../services/payment";
+import { reviewService } from "../services/review";
 import {
   ArrowLeft,
   Store,
@@ -22,6 +23,9 @@ import {
   Wallet,
   BadgeCheck,
   Banknote,
+  Star,
+  MessageSquare,
+  X,
 } from "lucide-react";
 import logo from "../assets/medilink-logo.png";
 import "./user-dashboard.css";
@@ -41,6 +45,20 @@ export default function UserOrderDetail() {
   const [selectedMethod, setSelectedMethod] = useState("COD");
   const [verifying, setVerifying] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // Review & Rating state
+  const [reviewStatus, setReviewStatus] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewModal, setReviewModal] = useState({
+    isOpen: false,
+    type: "medicine", // "medicine" | "pharmacy" | "delivery"
+    targetId: "",
+    targetName: "",
+    rating: 5,
+    comment: "",
+    isSubmitting: false,
+    error: null,
+  });
 
   const fetchOrderDetail = useCallback(async () => {
     setLoading(true);
@@ -66,10 +84,20 @@ export default function UserOrderDetail() {
     }
   }, [id]);
 
+  const fetchReviewStatus = useCallback(async () => {
+    try {
+      const status = await reviewService.getOrderReviewStatus(id);
+      setReviewStatus(status);
+    } catch (_) {
+      setReviewStatus(null);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchOrderDetail();
     fetchPayment();
-  }, [id]);
+    fetchReviewStatus();
+  }, [id, fetchOrderDetail, fetchPayment, fetchReviewStatus]);
 
   const handleInitiatePayment = async () => {
     setPaymentLoading(true);
@@ -102,9 +130,53 @@ export default function UserOrderDetail() {
     }
   };
 
-  useEffect(() => {
-    fetchOrderDetail();
-  }, [id]);
+  const handleOpenReviewModal = (type, targetId, targetName) => {
+    setReviewModal({
+      isOpen: true,
+      type,
+      targetId,
+      targetName,
+      rating: 5,
+      comment: "",
+      isSubmitting: false,
+      error: null,
+    });
+  };
+
+  const handleCloseReviewModal = () => {
+    setReviewModal((prev) => ({ ...prev, isOpen: false, error: null }));
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!reviewModal.rating || reviewModal.rating < 1 || reviewModal.rating > 5) {
+      setReviewModal((prev) => ({ ...prev, error: "Please select a rating between 1 and 5 stars." }));
+      return;
+    }
+
+    setReviewModal((prev) => ({ ...prev, isSubmitting: true, error: null }));
+
+    try {
+      const payload = {
+        orderId: id,
+        rating: reviewModal.rating,
+        comment: reviewModal.comment?.trim() || null,
+        ...(reviewModal.type === "medicine" && { medicineId: reviewModal.targetId }),
+        ...(reviewModal.type === "pharmacy" && { pharmacyId: reviewModal.targetId }),
+        ...(reviewModal.type === "delivery" && { deliveryPartnerId: reviewModal.targetId }),
+      };
+
+      await reviewService.createReview(payload);
+      handleCloseReviewModal();
+      await fetchReviewStatus();
+    } catch (err) {
+      setReviewModal((prev) => ({
+        ...prev,
+        isSubmitting: false,
+        error: err.message || "Failed to submit review. Please try again.",
+      }));
+    }
+  };
 
   if (loading) {
     return (
@@ -558,6 +630,12 @@ export default function UserOrderDetail() {
               <span>Subtotal</span>
               <span>&#8377;{Number(order.subtotal).toFixed(2)}</span>
             </div>
+            {Number(order.discountAmount || 0) > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", color: "#059669", fontWeight: 600 }}>
+                <span>Platform Discount</span>
+                <span>-&#8377;{Number(order.discountAmount).toFixed(2)}</span>
+              </div>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px", color: "#64748b" }}>
               <span>Delivery Fee</span>
               <span>{order.deliveryFee > 0 ? `₹${Number(order.deliveryFee).toFixed(2)}` : "FREE"}</span>
@@ -568,6 +646,203 @@ export default function UserOrderDetail() {
             </div>
           </div>
         </div>
+
+        {/* ───── Customer Reviews & Ratings Panel (On Completed / Delivered Orders) ───── */}
+        {(order.orderStatus === "COMPLETED" || order.orderStatus === "DELIVERED") && (
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "14px",
+              border: "1px solid #e2e8f0",
+              padding: "24px",
+              marginTop: "24px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+              <Star size={18} color="#f59e0b" fill="#f59e0b" />
+              <span style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Order Reviews & Ratings
+              </span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              {/* Medicines in Order */}
+              {order.items?.map((item) => {
+                const medId = item.pharmacyMedicine?.medicine?.id || item.medicine?.id;
+                const isReviewed = reviewStatus?.reviewedMedicineIds?.includes(medId);
+                const existingReview = reviewStatus?.reviews?.find((r) => r.medicineId === medId);
+
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 16px",
+                      background: "#f8fafc",
+                      borderRadius: "10px",
+                      border: "1px solid #e2e8f0",
+                      flexWrap: "wrap",
+                      gap: "10px",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a" }}>
+                        {item.medicine?.name || item.pharmacyMedicine?.medicine?.name || "Purchased Medicine"}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#64748b" }}>
+                        {item.medicine?.genericName || "Medicine Review"}
+                      </div>
+                    </div>
+
+                    {isReviewed ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#d1fae5", color: "#065f46", padding: "6px 12px", borderRadius: "999px", fontSize: "12px", fontWeight: 700 }}>
+                        <CheckCircle2 size={14} />
+                        <span>Reviewed (★ {existingReview?.rating || 5})</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          handleOpenReviewModal(
+                            "medicine",
+                            medId,
+                            item.medicine?.name || item.pharmacyMedicine?.medicine?.name || "Medicine"
+                          )
+                        }
+                        style={{
+                          background: "#087ac7",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "8px",
+                          padding: "7px 16px",
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <Star size={14} fill="#fff" /> Rate Medicine
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Pharmacy Rating */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  background: "#f8fafc",
+                  borderRadius: "10px",
+                  border: "1px solid #e2e8f0",
+                  flexWrap: "wrap",
+                  gap: "10px",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a" }}>
+                    {order.pharmacy?.name || "Fulfilling Pharmacy"}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>
+                    Pharmacy service & packaging rating
+                  </div>
+                </div>
+
+                {reviewStatus?.pharmacyReviewed ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#d1fae5", color: "#065f46", padding: "6px 12px", borderRadius: "999px", fontSize: "12px", fontWeight: 700 }}>
+                    <CheckCircle2 size={14} />
+                    <span>Reviewed (★ {reviewStatus.reviews?.find((r) => r.pharmacyId === order.pharmacyId)?.rating || 5})</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() =>
+                      handleOpenReviewModal("pharmacy", order.pharmacyId, order.pharmacy?.name || "Pharmacy")
+                    }
+                    style={{
+                      background: "#087ac7",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "8px",
+                      padding: "7px 16px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <Star size={14} fill="#fff" /> Rate Pharmacy
+                  </button>
+                )}
+              </div>
+
+              {/* Delivery Partner Rating (If home delivery & partner assigned) */}
+              {order.fulfillmentType === "HOME_DELIVERY" && order.delivery?.deliveryPartnerId && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 16px",
+                    background: "#f8fafc",
+                    borderRadius: "10px",
+                    border: "1px solid #e2e8f0",
+                    flexWrap: "wrap",
+                    gap: "10px",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: "14px", color: "#0f172a" }}>
+                      {order.delivery.deliveryPartner?.fullName || "Delivery Partner"}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#64748b" }}>
+                      Delivery speed & partner conduct rating
+                    </div>
+                  </div>
+
+                  {reviewStatus?.deliveryReviewed ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#d1fae5", color: "#065f46", padding: "6px 12px", borderRadius: "999px", fontSize: "12px", fontWeight: 700 }}>
+                      <CheckCircle2 size={14} />
+                      <span>Reviewed (★ {reviewStatus.reviews?.find((r) => r.deliveryPartnerId === order.delivery.deliveryPartnerId)?.rating || 5})</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        handleOpenReviewModal(
+                          "delivery",
+                          order.delivery.deliveryPartnerId,
+                          order.delivery.deliveryPartner?.fullName || "Delivery Partner"
+                        )
+                      }
+                      style={{
+                        background: "#087ac7",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "7px 16px",
+                        fontSize: "13px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <Star size={14} fill="#fff" /> Rate Delivery
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ───── Payment Panel ───── */}
         {order.orderStatus !== "REJECTED" && order.orderStatus !== "CANCELLED" && (
@@ -760,6 +1035,155 @@ export default function UserOrderDetail() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ───── Review & Rating Modal Dialog ───── */}
+        {reviewModal.isOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(15, 23, 42, 0.6)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+              padding: "20px",
+            }}
+            onClick={handleCloseReviewModal}
+          >
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: "16px",
+                width: "100%",
+                maxWidth: "480px",
+                padding: "24px",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
+                  Rate {reviewModal.targetName}
+                </h3>
+                <button
+                  onClick={handleCloseReviewModal}
+                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "#64748b" }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitReview}>
+                {reviewModal.error && (
+                  <div style={{ background: "#fee2e2", color: "#991b1b", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", marginBottom: "16px" }}>
+                    {reviewModal.error}
+                  </div>
+                )}
+
+                {/* Interactive Star Selector */}
+                <div style={{ marginBottom: "20px", textAlign: "center" }}>
+                  <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "8px", fontWeight: 600 }}>
+                    Select Your Rating
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewModal((prev) => ({ ...prev, rating: star }))}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: "4px",
+                          transition: "transform 0.1s",
+                        }}
+                      >
+                        <Star
+                          size={32}
+                          fill={star <= reviewModal.rating ? "#f59e0b" : "none"}
+                          color={star <= reviewModal.rating ? "#f59e0b" : "#cbd5e1"}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "#f59e0b", marginTop: "6px" }}>
+                    {reviewModal.rating} out of 5 Stars
+                  </div>
+                </div>
+
+                {/* Optional Comment Textarea */}
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
+                    Review Comments (Optional)
+                  </label>
+                  <textarea
+                    value={reviewModal.comment}
+                    onChange={(e) => setReviewModal((prev) => ({ ...prev, comment: e.target.value }))}
+                    placeholder="Share your experience to help other verified customers..."
+                    rows={4}
+                    maxLength={1000}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "14px",
+                      fontFamily: "inherit",
+                      resize: "vertical",
+                      outline: "none",
+                    }}
+                  />
+                  <div style={{ fontSize: "11px", color: "#94a3b8", textAlign: "right", marginTop: "4px" }}>
+                    {reviewModal.comment.length}/1000 characters
+                  </div>
+                </div>
+
+                {/* Modal Action Buttons */}
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={handleCloseReviewModal}
+                    disabled={reviewModal.isSubmitting}
+                    style={{
+                      padding: "9px 18px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      background: "#f8fafc",
+                      color: "#475569",
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={reviewModal.isSubmitting}
+                    style={{
+                      padding: "9px 22px",
+                      borderRadius: "8px",
+                      border: "none",
+                      background: "#087ac7",
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: "14px",
+                      cursor: reviewModal.isSubmitting ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    {reviewModal.isSubmitting ? <RefreshCw size={14} className="pharmacy-spinner" /> : <CheckCircle2 size={14} />}
+                    {reviewModal.isSubmitting ? "Submitting..." : "Submit Review"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </main>

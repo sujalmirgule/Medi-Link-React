@@ -372,6 +372,7 @@ model Order {
   delivery        Delivery?
   payments        Payment[]
   settlement      Settlement?
+  reviews         Review[]
 
   @@index([customerId])
   @@index([pharmacyId])
@@ -493,23 +494,31 @@ model Settlement {
 model Review {
   id                String   @id @default(uuid())
   customerId        String
+  orderId           String?  // FK to Order — used for purchase-eligibility proof
   pharmacyId        String?
   deliveryPartnerId String?
   medicineId        String?
   rating            Int // Scale: 1 to 5
   comment           String?
+  isHidden          Boolean  @default(false) // Admin soft-moderation
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   customer        User             @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Restrict)
+  order           Order?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
   pharmacy        Pharmacy?        @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
   deliveryPartner DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id], onDelete: SetNull)
   medicine        Medicine?        @relation(fields: [medicineId], references: [id], onDelete: SetNull)
 
+  @@unique([customerId, orderId, medicineId], name: "unique_medicine_review_per_order")
+  @@unique([customerId, orderId, pharmacyId], name: "unique_pharmacy_review_per_order")
+  @@unique([customerId, orderId, deliveryPartnerId], name: "unique_delivery_review_per_order")
   @@index([customerId])
   @@index([pharmacyId])
   @@index([deliveryPartnerId])
   @@index([medicineId])
+  @@index([orderId])
+  @@index([isHidden])
 }
 
 // =============================================================================

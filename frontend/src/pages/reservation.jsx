@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { orderService } from "../services/order";
 import { customerService } from "../services/customer";
+import { discountService } from "../services/discount";
 import { useAuth } from "../context/AuthContext";
 import {
   ArrowLeft,
@@ -16,6 +17,9 @@ import {
   AlertTriangle,
   RefreshCw,
   Plus,
+  Tag,
+  Percent,
+  X,
 } from "lucide-react";
 import "./reservation.css";
 
@@ -43,6 +47,13 @@ const Reservation = () => {
   const [newState, setNewState] = useState("Maharashtra");
   const [newPincode, setNewPincode] = useState("421301");
   const [savingAddress, setSavingAddress] = useState(false);
+
+  // Discount & Coupon State
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountError, setDiscountError] = useState(null);
+  const [discountSuccess, setDiscountSuccess] = useState(null);
 
   // Submission state
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -92,7 +103,42 @@ const Reservation = () => {
   const unitPrice = Number(pharmacy.price || medicine.price || 28);
   const deliveryCharge = deliveryType === "delivery" ? 30 : 0;
   const subtotal = unitPrice * quantity;
-  const total = subtotal + deliveryCharge;
+  const discountAmount = appliedDiscount ? appliedDiscount.discountAmount : 0;
+  const total = Math.max(0, subtotal - discountAmount) + deliveryCharge;
+
+  const handleApplyCoupon = async (e) => {
+    e?.preventDefault();
+    if (!couponInput.trim()) {
+      setDiscountError("Please enter a valid coupon code.");
+      return;
+    }
+
+    setDiscountLoading(true);
+    setDiscountError(null);
+    setDiscountSuccess(null);
+
+    try {
+      const result = await discountService.previewDiscount({
+        code: couponInput.trim(),
+        subtotal,
+      });
+
+      setAppliedDiscount(result);
+      setDiscountSuccess(`Coupon '${result.code}' applied! Saved ₹${result.discountAmount.toFixed(2)}.`);
+    } catch (err) {
+      setAppliedDiscount(null);
+      setDiscountError(err.message || "Invalid coupon code.");
+    } finally {
+      setDiscountLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedDiscount(null);
+    setCouponInput("");
+    setDiscountError(null);
+    setDiscountSuccess(null);
+  };
 
   const handleSaveNewAddress = async (e) => {
     e.preventDefault();
@@ -141,11 +187,12 @@ const Reservation = () => {
     setOrderError(null);
 
     try {
-      // Create real order in backend with atomic stock reservation
+      // Create real order in backend with atomic stock reservation and discount integration
       const createdOrder = await orderService.createOrder({
         pharmacyId: pharmacy.pharmacyId || pharmacy.pharmacy?.id || pharmacy.id,
         fulfillmentType: deliveryType === "delivery" ? "HOME_DELIVERY" : "PICKUP",
         deliveryAddressId: deliveryType === "delivery" ? selectedAddressId : null,
+        discountCode: appliedDiscount?.code || null,
         items: [
           {
             pharmacyMedicineId: pharmacy.pharmacyMedicineId || pharmacy.id,
@@ -540,10 +587,108 @@ const Reservation = () => {
 
               <div className="summary-divider"></div>
 
+              {/* Coupon / Promo Code Box */}
+              <div style={{ margin: "14px 0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 700, color: "#475569", marginBottom: "8px" }}>
+                  <Tag size={14} color="#087ac7" />
+                  <span>MediLink Promo Code</span>
+                </div>
+
+                {appliedDiscount ? (
+                  <div
+                    style={{
+                      background: "#d1fae5",
+                      border: "1px solid #6ee7b7",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <CheckCircle2 size={15} color="#059669" />
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#065f46" }}>
+                        {appliedDiscount.code} (-₹{appliedDiscount.discountAmount.toFixed(2)})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      style={{ background: "transparent", border: "none", color: "#047857", cursor: "pointer", display: "flex", alignItems: "center", padding: "2px" }}
+                      title="Remove coupon"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <input
+                        type="text"
+                        placeholder="Enter coupon (e.g. PCT20)"
+                        value={couponInput}
+                        onChange={(e) => {
+                          setCouponInput(e.target.value.toUpperCase());
+                          if (discountError) setDiscountError(null);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "8px 10px",
+                          borderRadius: "6px",
+                          border: discountError ? "1px solid #ef4444" : "1px solid #cbd5e1",
+                          fontSize: "12px",
+                          textTransform: "uppercase",
+                          fontWeight: "600",
+                          outline: "none",
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={discountLoading || !couponInput.trim()}
+                        style={{
+                          padding: "8px 14px",
+                          background: "#087ac7",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          cursor: discountLoading || !couponInput.trim() ? "not-allowed" : "pointer",
+                          opacity: discountLoading || !couponInput.trim() ? 0.6 : 1,
+                        }}
+                      >
+                        {discountLoading ? "..." : "Apply"}
+                      </button>
+                    </div>
+                    {discountError && (
+                      <div style={{ fontSize: "11px", color: "#dc2626", marginTop: "4px" }}>
+                        {discountError}
+                      </div>
+                    )}
+                    {discountSuccess && (
+                      <div style={{ fontSize: "11px", color: "#059669", marginTop: "4px" }}>
+                        {discountSuccess}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="summary-divider"></div>
+
               <div className="summary-row">
                 <span>Medicine Subtotal</span>
                 <strong>&#8377;{subtotal.toFixed(2)}</strong>
               </div>
+
+              {discountAmount > 0 && (
+                <div className="summary-row" style={{ color: "#059669" }}>
+                  <span>Platform Discount</span>
+                  <strong>-&#8377;{discountAmount.toFixed(2)}</strong>
+                </div>
+              )}
 
               <div className="summary-row">
                 <span>Delivery Fee</span>
