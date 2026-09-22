@@ -1,0 +1,20 @@
+// MediLink Prisma Schema
+// Phase 1: Foundation Setup
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Minimal placeholder model to ensure Prisma schema validity in Phase 1
+// Full business domain models (User, Pharmacy, Medicine, Order, Delivery)
+// will be defined in Phase 2.
+model HealthCheck {
+  id        Int      @id @default(autoincrement())
+  status    String   @default("ok")
+  checkedAt DateTime @default(now())
+}

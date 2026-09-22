@@ -1,0 +1,880 @@
+/* =========================================
+   MEDILINK REGISTER PAGE
+   ========================================= */
+
+.register-page {
+  min-height: 100vh;
+  width: 100%;
+
+  display: grid;
+  grid-template-columns: 43% 57%;
+
+  background: #f5fbff;
+
+  overflow: hidden;
+}
+
+
+/* =========================================
+   LEFT SIDE
+   ========================================= */
+
+.register-left {
+  position: relative;
+
+  min-height: 100vh;
+
+  padding: 38px 58px;
+
+  display: flex;
+  flex-direction: column;
+
+  background:
+    radial-gradient(
+      circle at 15% 15%,
+      rgba(255, 255, 255, 0.95) 0,
+      rgba(255, 255, 255, 0) 32%
+    ),
+    linear-gradient(
+      145deg,
+      #f1faff 0%,
+      #e7f5fc 52%,
+      #dceffb 100%
+    );
+
+  overflow: hidden;
+}
+
+
+/* =========================================
+   LOGO
+   ========================================= */
+
+.register-logo {
+  width: fit-content;
+}
+
+.register-logo img {
+  display: block;
+
+  width: 175px;
+  height: auto;
+
+  object-fit: contain;
+}
+
+
+/* =========================================
+   LEFT CONTENT
+   ========================================= */
+
+.register-left-content {
+  width: 100%;
+  max-width: 510px;
+
+  margin-top: 68px;
+}
+
+.register-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  color: #087ac7;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 1.4px;
+}
+
+.register-eyebrow span {
+  width: 25px;
+  height: 2px;
+
+  border-radius: 999px;
+
+  background: #159ed1;
+}
+
+
+.register-left-content h1 {
+  margin: 18px 0 0;
+
+  color: #123b78;
+
+  font-size: clamp(48px, 5vw, 67px);
+  line-height: 0.98;
+
+  font-weight: 750;
+
+  letter-spacing: -2.5px;
+}
+
+.register-left-content h1 span {
+  display: block;
+
+  color: #159ed1;
+}
+
+
+.register-description {
+  max-width: 455px;
+
+  margin: 22px 0 0;
+
+  color: #536f88;
+
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+
+/* =========================================
+   BENEFITS
+   ========================================= */
+
+.register-benefits {
+  display: flex;
+  flex-direction: column;
+
+  gap: 13px;
+
+  margin-top: 31px;
+}
+
+.register-benefit {
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+  max-width: 390px;
+
+  padding: 10px 12px;
+
+  border: 1px solid rgba(73, 157, 204, 0.14);
+  border-radius: 13px;
+
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.register-benefit-icon {
+  flex: 0 0 39px;
+
+  width: 39px;
+  height: 39px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  color: #087ac7;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 5px 14px rgba(29, 116, 165, 0.07);
+}
+
+.register-benefit > div:last-child {
+  margin-left: 12px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.register-benefit strong {
+  color: #173f6c;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.register-benefit span {
+  color: #71879a;
+
+  font-size: 10px;
+}
+
+
+/* =========================================
+   QUOTE
+   ========================================= */
+
+.register-quote {
+  display: flex;
+  align-items: center;
+
+  margin-top: 32px;
+}
+
+.register-quote > span {
+  width: 3px;
+  height: 38px;
+
+  margin-right: 12px;
+
+  border-radius: 999px;
+
+  background: #159ed1;
+}
+
+.register-quote p {
+  margin: 0;
+
+  color: #426a87;
+
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+
+/* =========================================
+   RIGHT SIDE
+   ========================================= */
+
+.register-right {
+  min-height: 100vh;
+
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 70px 50px 40px;
+
+  background: #f8fcff;
+}
+
+
+/* =========================================
+   TOP LOGIN
+   ========================================= */
+
+.register-login-top {
+  position: absolute;
+
+  top: 26px;
+  right: 50px;
+
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  color: #7a8e9f;
+
+  font-size: 11px;
+}
+
+.register-login-top button {
+  padding: 0;
+
+  border: none;
+  background: transparent;
+
+  color: #087ac7;
+
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.register-login-top button:hover {
+  text-decoration: underline;
+}
+
+
+/* =========================================
+   CARD
+   ========================================= */
+
+.register-card {
+  width: 100%;
+  max-width: 600px;
+
+  padding: 32px 38px 25px;
+
+  border: 1px solid #e4eff6;
+  border-radius: 24px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 24px 65px rgba(33, 93, 130, 0.10),
+    0 4px 15px rgba(33, 93, 130, 0.04);
+}
+
+
+/* =========================================
+   HEADER
+   ========================================= */
+
+.register-header h2 {
+  margin: 0;
+
+  color: #123b78;
+
+  font-size: 29px;
+  line-height: 1.2;
+
+  font-weight: 750;
+
+  letter-spacing: -0.7px;
+}
+
+.register-header p {
+  margin: 7px 0 0;
+
+  color: #71869a;
+
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+/* =========================================
+   FORM
+   ========================================= */
+
+.register-form {
+  margin-top: 22px;
+}
+
+.register-field {
+  min-width: 0;
+}
+
+.register-field label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #294b69;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+
+/* =========================================
+   TWO COLUMNS
+   ========================================= */
+
+.register-two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 15px;
+
+  margin-top: 14px;
+}
+
+
+/* =========================================
+   INPUT
+   ========================================= */
+
+.register-input-wrapper {
+  position: relative;
+
+  width: 100%;
+}
+
+.register-input-icon {
+  position: absolute;
+
+  left: 13px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  color: #8ca5b8;
+
+  pointer-events: none;
+}
+
+.register-input {
+  width: 100%;
+  height: 44px;
+
+  box-sizing: border-box;
+
+  padding: 0 13px 0 39px;
+
+  border: 1px solid #dce8f0;
+  border-radius: 11px;
+
+  outline: none;
+
+  background: #fbfdff;
+
+  color: #173f63;
+
+  font-family: inherit;
+  font-size: 11px;
+
+  transition: 0.2s ease;
+}
+
+.register-input::placeholder {
+  color: #9aabba;
+}
+
+.register-input:focus {
+  border-color: #1688cf;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 3px rgba(22, 136, 207, 0.09);
+}
+
+.register-password-input {
+  padding-right: 40px;
+}
+
+
+/* =========================================
+   PASSWORD BUTTON
+   ========================================= */
+
+.register-password-toggle {
+  position: absolute;
+
+  right: 9px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: none;
+  border-radius: 7px;
+
+  color: #7d95a8;
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.register-password-toggle:hover {
+  color: #087ac7;
+  background: #edf7fc;
+}
+
+
+/* =========================================
+   REGISTER AS
+   ========================================= */
+
+.register-role-section {
+  margin-top: 19px;
+}
+
+.register-role-title {
+  margin: 0 0 9px;
+
+  color: #294b69;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.register-role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 10px;
+}
+
+.register-role-card {
+  min-width: 0;
+
+  min-height: 66px;
+
+  padding: 8px 10px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  border: 1px solid #e2ebf1;
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  color: #647c8f;
+
+  font-family: inherit;
+
+  cursor: pointer;
+
+  text-align: left;
+
+  transition: 0.2s ease;
+}
+
+.register-role-card:hover {
+  transform: translateY(-1px);
+
+  border-color: #a9d8ef;
+
+  color: #087ac7;
+}
+
+.register-role-card.active {
+  border-color: #159ed1;
+
+  background: #edf8ff;
+
+  color: #087ac7;
+
+  box-shadow:
+    0 6px 16px rgba(21, 158, 209, 0.08);
+}
+
+.register-role-icon {
+  flex: 0 0 32px;
+
+  width: 32px;
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9px;
+
+  color: #087ac7;
+
+  background: #f0f8fd;
+}
+
+.register-role-card.active .register-role-icon {
+  color: #ffffff;
+
+  background: #087ac7;
+}
+
+.register-role-content {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.register-role-content strong {
+  color: inherit;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.register-role-content span {
+  color: #7b90a1;
+
+  font-size: 8.5px;
+  line-height: 1.25;
+}
+
+
+/* =========================================
+   TERMS
+   ========================================= */
+
+.register-terms {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 8px;
+
+  margin-top: 17px;
+
+  color: #71869a;
+
+  font-size: 9.5px;
+  line-height: 1.5;
+
+  cursor: pointer;
+}
+
+.register-terms input {
+  flex: 0 0 auto;
+
+  width: 14px;
+  height: 14px;
+
+  margin: 1px 0 0;
+
+  accent-color: #087ac7;
+
+  cursor: pointer;
+}
+
+.register-terms button {
+  padding: 0;
+
+  border: none;
+  background: transparent;
+
+  color: #087ac7;
+
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+/* =========================================
+   REGISTER BUTTON
+   ========================================= */
+
+.register-button {
+  width: 100%;
+  height: 46px;
+
+  margin-top: 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border: none;
+  border-radius: 11px;
+
+  background: linear-gradient(
+    135deg,
+    #124f91,
+    #087ac7,
+    #159ed1
+  );
+
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 9px 22px rgba(8, 122, 199, 0.18);
+
+  transition: 0.2s ease;
+}
+
+.register-button:hover {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 13px 27px rgba(8, 122, 199, 0.23);
+}
+
+
+/* =========================================
+   BOTTOM LOGIN
+   ========================================= */
+
+.register-bottom-login {
+  margin: 17px 0 0;
+
+  text-align: center;
+
+  color: #71869a;
+
+  font-size: 10px;
+}
+
+.register-bottom-login button {
+  padding: 0;
+
+  border: none;
+  background: transparent;
+
+  color: #087ac7;
+
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.register-bottom-login button:hover {
+  text-decoration: underline;
+}
+
+
+/* =========================================
+   TABLET
+   ========================================= */
+
+@media (max-width: 1050px) {
+
+  .register-page {
+    grid-template-columns: 40% 60%;
+  }
+
+  .register-left {
+    padding: 30px 35px;
+  }
+
+  .register-left-content {
+    margin-top: 50px;
+  }
+
+  .register-left-content h1 {
+    font-size: 52px;
+  }
+
+  .register-right {
+    padding: 65px 30px 30px;
+  }
+
+  .register-login-top {
+    right: 30px;
+  }
+
+  .register-card {
+    padding: 30px;
+  }
+}
+
+
+/* =========================================
+   MOBILE
+   ========================================= */
+
+@media (max-width: 780px) {
+
+  .register-page {
+    display: block;
+
+    overflow: visible;
+  }
+
+  .register-left {
+    min-height: auto;
+
+    padding: 28px 24px 35px;
+  }
+
+  .register-logo img {
+    width: 160px;
+  }
+
+  .register-left-content {
+    margin-top: 38px;
+  }
+
+  .register-left-content h1 {
+    font-size: 45px;
+  }
+
+  .register-description {
+    font-size: 13px;
+  }
+
+  .register-right {
+    min-height: auto;
+
+    padding: 70px 18px 35px;
+  }
+
+  .register-login-top {
+    top: 25px;
+    right: 18px;
+  }
+
+  .register-card {
+    max-width: 560px;
+
+    padding: 28px 22px;
+
+    border-radius: 20px;
+  }
+}
+
+
+/* =========================================
+   SMALL MOBILE
+   ========================================= */
+
+@media (max-width: 520px) {
+
+  .register-left {
+    padding: 25px 18px 30px;
+  }
+
+  .register-logo img {
+    width: 145px;
+  }
+
+  .register-left-content {
+    margin-top: 30px;
+  }
+
+  .register-left-content h1 {
+    font-size: 38px;
+
+    letter-spacing: -1.5px;
+  }
+
+  .register-benefits {
+    gap: 9px;
+  }
+
+  .register-benefit {
+    max-width: none;
+  }
+
+  .register-right {
+    padding: 65px 14px 30px;
+  }
+
+  .register-card {
+    padding: 25px 17px;
+
+    border-radius: 18px;
+  }
+
+  .register-header h2 {
+    font-size: 26px;
+  }
+
+  .register-two-columns {
+    grid-template-columns: 1fr;
+
+    gap: 14px;
+  }
+
+  .register-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .register-role-card {
+    min-height: 60px;
+  }
+}

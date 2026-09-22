@@ -1,0 +1,585 @@
+.reservation-page {
+  min-height: 100vh;
+  background: #f5f9fc;
+  color: #172b4d;
+}
+
+.reservation-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e6edf3;
+}
+
+.reservation-header-inner {
+  max-width: 1180px;
+  margin: auto;
+  height: 72px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reservation-back-btn {
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #53657a;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reservation-step {
+  display: flex;
+  align-items: center;
+}
+
+.reservation-step span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-active,
+.step-muted {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.step-active {
+  background: #1769e0;
+  color: white;
+}
+
+.step-muted {
+  background: #e9eff5;
+  color: #8a99a8;
+}
+
+.step-line {
+  width: 45px;
+  height: 2px;
+  background: #dbe5ee;
+}
+
+.secure-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #16865b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reservation-container {
+  max-width: 1180px;
+  margin: auto;
+  padding: 42px 24px 70px;
+}
+
+.reservation-heading {
+  margin-bottom: 30px;
+}
+
+.reservation-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #1769e0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.reservation-heading h1 {
+  margin: 8px 0 8px;
+  font-size: 34px;
+  line-height: 1.2;
+  color: #12233f;
+}
+
+.reservation-heading p {
+  margin: 0;
+  color: #718096;
+  font-size: 15px;
+}
+
+.reservation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  gap: 24px;
+  align-items: start;
+}
+
+.reservation-main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.reservation-card {
+  background: white;
+  border: 1px solid #e5edf4;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 30px rgba(25, 70, 110, 0.05);
+}
+
+.card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.small-label {
+  color: #8492a6;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.card-title h2 {
+  margin: 5px 0 0;
+  font-size: 20px;
+  color: #152945;
+}
+
+.medicine-price {
+  font-size: 23px;
+  font-weight: 800;
+  color: #1769e0;
+}
+
+.medicine-summary-details {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  color: #718096;
+  font-size: 13px;
+}
+
+.section-title {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.section-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #edf5ff;
+  color: #1769e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-title h2 {
+  margin: 0;
+  font-size: 17px;
+  color: #172b4d;
+}
+
+.section-title p {
+  margin: 4px 0 0;
+  color: #8492a6;
+  font-size: 13px;
+}
+
+.selected-pharmacy {
+  display: flex;
+  gap: 15px;
+  padding: 18px;
+  border: 1px solid #e3ebf2;
+  border-radius: 15px;
+  background: #fbfdff;
+}
+
+.pharmacy-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: #eaf3ff;
+  color: #1769e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pharmacy-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.pharmacy-name-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.pharmacy-name-row h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #1b304d;
+}
+
+.open-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #16865b;
+  background: #eaf9f2;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.pharmacy-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: #718096;
+  font-size: 12px;
+}
+
+.pharmacy-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pharmacy-address {
+  margin: 8px 0 0;
+  color: #8a99a8;
+  font-size: 12px;
+}
+
+.change-pharmacy-btn {
+  margin-top: 15px;
+  border: none;
+  background: transparent;
+  color: #1769e0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.receive-methods {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.receive-method {
+  position: relative;
+  text-align: left;
+  border: 1.5px solid #e1e9f0;
+  background: #fff;
+  border-radius: 16px;
+  padding: 17px;
+  display: flex;
+  gap: 12px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.receive-method:hover {
+  border-color: #9cc5f5;
+  transform: translateY(-1px);
+}
+
+.receive-method.selected {
+  border-color: #1769e0;
+  background: #f5f9ff;
+}
+
+.method-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #edf5ff;
+  color: #1769e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.method-content h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #203653;
+}
+
+.method-content p {
+  margin: 5px 0;
+  color: #8290a2;
+  font-size: 11px;
+}
+
+.method-content strong {
+  color: #16865b;
+  font-size: 11px;
+}
+
+.method-check {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  color: #1769e0;
+}
+
+.delivery-details {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e7edf3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delivery-details label {
+  color: #42556e;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.delivery-details textarea,
+.delivery-details input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #dce6ee;
+  border-radius: 12px;
+  padding: 12px 13px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  background: #fbfdff;
+}
+
+.delivery-details textarea {
+  min-height: 85px;
+  resize: vertical;
+}
+
+.delivery-details textarea:focus,
+.delivery-details input:focus {
+  border-color: #1769e0;
+  box-shadow: 0 0 0 3px rgba(23, 105, 224, 0.08);
+}
+
+.reservation-info {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  background: #eef8f4;
+  border: 1px solid #d4eee2;
+  border-radius: 15px;
+  padding: 15px 17px;
+  color: #16865b;
+}
+
+.reservation-info strong {
+  display: block;
+  font-size: 13px;
+}
+
+.reservation-info p {
+  margin: 4px 0 0;
+  color: #5f7d70;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.reservation-sidebar {
+  position: sticky;
+  top: 20px;
+}
+
+.order-summary {
+  background: white;
+  border: 1px solid #e2ebf2;
+  border-radius: 20px;
+  padding: 23px;
+  box-shadow: 0 10px 35px rgba(25, 70, 110, 0.07);
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #172b4d;
+}
+
+.summary-header span {
+  color: #8997a8;
+  font-size: 12px;
+}
+
+.summary-medicine {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.summary-pill {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #edf5ff;
+  color: #1769e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary-medicine div:nth-child(2) {
+  flex: 1;
+}
+
+.summary-medicine h3 {
+  margin: 0;
+  font-size: 13px;
+  color: #243a57;
+}
+
+.summary-medicine p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #8a99a8;
+}
+
+.summary-medicine > strong {
+  font-size: 14px;
+  color: #243a57;
+}
+
+.summary-divider {
+  height: 1px;
+  background: #e8eef3;
+  margin: 20px 0;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.summary-row span {
+  color: #7d8c9e;
+}
+
+.summary-row strong {
+  color: #263b56;
+}
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-total span {
+  color: #263b56;
+  font-weight: 700;
+}
+
+.summary-total strong {
+  color: #1769e0;
+  font-size: 24px;
+}
+
+.confirm-reservation-btn {
+  margin-top: 22px;
+  width: 100%;
+  border: none;
+  border-radius: 13px;
+  padding: 14px;
+  background: #1769e0;
+  color: white;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.confirm-reservation-btn:hover {
+  background: #125ac1;
+  transform: translateY(-1px);
+}
+
+.summary-trust {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  color: #7d8c9e;
+  font-size: 10px;
+}
+
+@media (max-width: 850px) {
+  .reservation-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-sidebar {
+    position: static;
+  }
+
+  .receive-methods {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .reservation-header-inner {
+    padding: 0 15px;
+  }
+
+  .reservation-container {
+    padding: 30px 15px 50px;
+  }
+
+  .reservation-heading h1 {
+    font-size: 27px;
+  }
+
+  .reservation-card,
+  .order-summary {
+    padding: 18px;
+  }
+
+  .secure-check {
+    display: none;
+  }
+
+  .step-line {
+    width: 25px;
+  }
+}
