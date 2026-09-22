@@ -1,5 +1,6 @@
-import { UserRole, VerificationStatus } from "@prisma/client";
+import { UserRole, VerificationStatus, NotificationType } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { NotificationService } from "../notifications/notification.service";
 
 export class VerificationService {
   /**
@@ -167,6 +168,19 @@ export class VerificationService {
     return updated;
   }
 
+  // Fire-and-forget notification after approve
+  static async _notifyApproval(applicantUserId: string, role: UserRole): Promise<void> {
+    const isPharmacy = role === UserRole.PHARMACY;
+    await NotificationService.create({
+      userId: applicantUserId,
+      type: NotificationType.SYSTEM,
+      title: "Verification Approved",
+      message: isPharmacy
+        ? "Congratulations! Your pharmacy registration has been approved. You can now access all pharmacy features on MediLink."
+        : "Congratulations! Your delivery partner registration has been approved. You can now accept delivery assignments.",
+    });
+  }
+
   /**
    * Reject a verification request with a mandatory reason.
    * Note: The user account remains login-capable (isActive = true) to see the rejection reason.
@@ -248,5 +262,18 @@ export class VerificationService {
     });
 
     return updated;
+  }
+
+  // Fire-and-forget notification after reject
+  static async _notifyRejection(applicantUserId: string, role: UserRole, reason: string): Promise<void> {
+    const isPharmacy = role === UserRole.PHARMACY;
+    await NotificationService.create({
+      userId: applicantUserId,
+      type: NotificationType.SYSTEM,
+      title: "Verification Rejected",
+      message: isPharmacy
+        ? `Your pharmacy verification application has been rejected. Reason: ${reason}. Please contact MediLink support for assistance.`
+        : `Your delivery partner verification application has been rejected. Reason: ${reason}. Please contact MediLink support for assistance.`,
+    });
   }
 }

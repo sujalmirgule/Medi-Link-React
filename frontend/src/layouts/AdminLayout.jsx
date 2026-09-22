@@ -16,9 +16,12 @@ import {
   X,
   RefreshCw,
   ExternalLink,
+  CreditCard,
+  DollarSign,
 } from "lucide-react";
 import logo from "../assets/medilink-logo.png";
 import "./admin-layout.css";
+import { NotificationBell } from "../components/NotificationBell";
 
 export function AdminLayout() {
   const { user, logout } = useAuth();
@@ -87,9 +90,24 @@ export function AdminLayout() {
       icon: PackageCheck,
     },
     {
+      to: "/admin/payments",
+      label: "Payments",
+      icon: CreditCard,
+    },
+    {
+      to: "/admin/settlements",
+      label: "Settlements",
+      icon: DollarSign,
+    },
+    {
       to: "/admin/audit-logs",
       label: "Audit Logs",
       icon: FileText,
+    },
+    {
+      to: "/admin/notifications",
+      label: "Notifications",
+      icon: ShieldCheck,
     },
     {
       to: "/admin/profile",
@@ -184,6 +202,8 @@ export function AdminLayout() {
               <span className="admin-status-dot" />
               <span>System Live</span>
             </div>
+
+            <NotificationBell notificationsPath="/admin/notifications" />
 
             <button
               onClick={handleManualRefresh}

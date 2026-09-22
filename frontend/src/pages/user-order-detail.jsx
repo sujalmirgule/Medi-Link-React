@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { orderService } from "../services/order";
+import { paymentService } from "../services/payment";
 import {
   ArrowLeft,
   Store,
@@ -17,6 +18,10 @@ import {
   Navigation,
   User,
   Phone,
+  CreditCard,
+  Wallet,
+  BadgeCheck,
+  Banknote,
 } from "lucide-react";
 import logo from "../assets/medilink-logo.png";
 import "./user-dashboard.css";
@@ -29,7 +34,15 @@ export default function UserOrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchOrderDetail = async () => {
+  // Payment state
+  const [payment, setPayment] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
+  const [selectedMethod, setSelectedMethod] = useState("COD");
+  const [verifying, setVerifying] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  const fetchOrderDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -39,6 +52,53 @@ export default function UserOrderDetail() {
       setError(err.message || "Failed to load order details.");
     } finally {
       setLoading(false);
+    }
+  }, [id]);
+
+  const fetchPayment = useCallback(async () => {
+    try {
+      const p = await paymentService.getPaymentForOrder(id);
+      setPayment(p);
+      if (p?.status === "PAID") setPaymentSuccess(true);
+    } catch (_) {
+      // No payment yet — that's fine
+      setPayment(null);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchOrderDetail();
+    fetchPayment();
+  }, [id]);
+
+  const handleInitiatePayment = async () => {
+    setPaymentLoading(true);
+    setPaymentError(null);
+    try {
+      const p = await paymentService.createPaymentIntent(id, selectedMethod);
+      setPayment(p);
+    } catch (err) {
+      setPaymentError(err.message || "Failed to initiate payment.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const handleVerifyPayment = async () => {
+    if (!payment) return;
+    setVerifying(true);
+    setPaymentError(null);
+    try {
+      const updated = await paymentService.verifyPayment(payment.id, {
+        simulateStatus: "PAID",
+      });
+      setPayment(updated);
+      setPaymentSuccess(true);
+      fetchOrderDetail(); // Refresh order status
+    } catch (err) {
+      setPaymentError(err.message || "Payment verification failed.");
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -503,11 +563,205 @@ export default function UserOrderDetail() {
               <span>{order.deliveryFee > 0 ? `₹${Number(order.deliveryFee).toFixed(2)}` : "FREE"}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "10px", borderTop: "1px dashed #cbd5e1", fontWeight: "700", fontSize: "16px", color: "#0f172a" }}>
-              <span>Total Paid</span>
+              <span>Total Amount</span>
               <span style={{ color: "#087ac7" }}>&#8377;{Number(order.totalAmount).toFixed(2)}</span>
             </div>
           </div>
         </div>
+
+        {/* ───── Payment Panel ───── */}
+        {order.orderStatus !== "REJECTED" && order.orderStatus !== "CANCELLED" && (
+          <div
+            style={{
+              background: paymentSuccess
+                ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)"
+                : "#ffffff",
+              border: paymentSuccess ? "1px solid #6ee7b7" : "1px solid #e2e8f0",
+              borderRadius: "14px",
+              padding: "24px",
+              marginTop: "24px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+              <CreditCard size={18} color={paymentSuccess ? "#059669" : "#087ac7"} />
+              <span style={{ fontSize: "14px", fontWeight: 700, color: paymentSuccess ? "#065f46" : "#0f172a", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Payment
+              </span>
+              {payment && (
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    padding: "3px 10px",
+                    borderRadius: "999px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    background:
+                      payment.status === "PAID" ? "#d1fae5" :
+                      payment.status === "FAILED" ? "#fee2e2" :
+                      payment.status === "REFUNDED" ? "#fef3c7" : "#e0f2fe",
+                    color:
+                      payment.status === "PAID" ? "#065f46" :
+                      payment.status === "FAILED" ? "#991b1b" :
+                      payment.status === "REFUNDED" ? "#92400e" : "#0284c7",
+                  }}
+                >
+                  {payment.status}
+                </span>
+              )}
+            </div>
+
+            {/* Paid state */}
+            {paymentSuccess && payment && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#065f46", fontWeight: 700, fontSize: "15px" }}>
+                  <BadgeCheck size={20} /> Payment Confirmed — &#8377;{Number(payment.amount).toFixed(2)}
+                </div>
+                <div style={{ fontSize: "13px", color: "#047857" }}>
+                  Method: <strong>{payment.method}</strong>
+                  {payment.transactionReference && (
+                    <> &nbsp;·&nbsp; Ref: <code style={{ fontSize: "12px" }}>{payment.transactionReference}</code></>
+                  )}
+                </div>
+                {payment.paidAt && (
+                  <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                    Paid at: {new Date(payment.paidAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Pending — already initiated */}
+            {!paymentSuccess && payment && payment.status === "PENDING" && (
+              <div>
+                <div style={{ fontSize: "13px", color: "#475569", marginBottom: "12px" }}>
+                  Payment of <strong>&#8377;{Number(payment.amount).toFixed(2)}</strong> via{" "}
+                  <strong>{payment.method}</strong> is pending.
+                  {payment.transactionReference && (
+                    <> Reference: <code style={{ fontSize: "12px" }}>{payment.transactionReference}</code></>
+                  )}
+                </div>
+                {paymentError && (
+                  <div style={{ background: "#fee2e2", color: "#991b1b", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", marginBottom: "12px" }}>
+                    {paymentError}
+                  </div>
+                )}
+                <button
+                  id="btn-confirm-payment"
+                  onClick={handleVerifyPayment}
+                  disabled={verifying}
+                  style={{
+                    background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "10px 22px",
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    cursor: verifying ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    opacity: verifying ? 0.7 : 1,
+                  }}
+                >
+                  {verifying ? <RefreshCw size={14} className="pharmacy-spinner" /> : <BadgeCheck size={14} />}
+                  {verifying ? "Confirming..." : "Confirm Payment Received"}
+                </button>
+              </div>
+            )}
+
+            {/* Failed state — allow retry */}
+            {!paymentSuccess && payment && payment.status === "FAILED" && (
+              <div>
+                <div style={{ background: "#fee2e2", color: "#991b1b", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", marginBottom: "12px" }}>
+                  Payment failed: {payment.failureReason || "Unknown reason"}. Please try again.
+                </div>
+                <button
+                  id="btn-retry-payment"
+                  onClick={handleInitiatePayment}
+                  disabled={paymentLoading}
+                  style={{
+                    background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "10px 22px",
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    cursor: paymentLoading ? "not-allowed" : "pointer",
+                    opacity: paymentLoading ? 0.7 : 1,
+                  }}
+                >
+                  Retry Payment
+                </button>
+              </div>
+            )}
+
+            {/* No payment yet — initiate */}
+            {!payment && (
+              <div>
+                <p style={{ fontSize: "13px", color: "#64748b", marginBottom: "14px" }}>
+                  Select your preferred payment method and proceed.
+                </p>
+                <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+                  {["COD", "UPI"].map((m) => (
+                    <button
+                      key={m}
+                      id={`btn-method-${m.toLowerCase()}`}
+                      onClick={() => setSelectedMethod(m)}
+                      style={{
+                        flex: 1,
+                        padding: "10px",
+                        borderRadius: "10px",
+                        border: selectedMethod === m ? "2px solid #0284c7" : "2px solid #e2e8f0",
+                        background: selectedMethod === m ? "#eff6ff" : "#f8fafc",
+                        color: selectedMethod === m ? "#0284c7" : "#64748b",
+                        fontWeight: 700,
+                        fontSize: "14px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {m === "COD" ? <Banknote size={16} /> : <Wallet size={16} />}
+                      {m === "COD" ? "Cash on Delivery" : "UPI / QR"}
+                    </button>
+                  ))}
+                </div>
+                {paymentError && (
+                  <div style={{ background: "#fee2e2", color: "#991b1b", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", marginBottom: "12px" }}>
+                    {paymentError}
+                  </div>
+                )}
+                <button
+                  id="btn-initiate-payment"
+                  onClick={handleInitiatePayment}
+                  disabled={paymentLoading}
+                  style={{
+                    background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "11px 26px",
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    cursor: paymentLoading ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    opacity: paymentLoading ? 0.7 : 1,
+                  }}
+                >
+                  {paymentLoading ? <RefreshCw size={14} className="pharmacy-spinner" /> : <CreditCard size={14} />}
+                  {paymentLoading ? "Processing..." : `Pay ₹${Number(order.totalAmount).toFixed(2)} via ${selectedMethod}`}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

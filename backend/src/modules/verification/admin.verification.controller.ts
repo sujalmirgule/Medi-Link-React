@@ -56,6 +56,9 @@ export class AdminVerificationController {
 
       const application = await VerificationService.approveVerification(id, adminUserId);
 
+      // Fire-and-forget notification to applicant
+      VerificationService._notifyApproval(application.userId, application.role).catch(() => {});
+
       res.status(200).json({
         success: true,
         message: "Verification application approved successfully",
@@ -80,6 +83,9 @@ export class AdminVerificationController {
         adminUserId,
         validated.reason
       );
+
+      // Fire-and-forget notification to applicant
+      VerificationService._notifyRejection(application.userId, application.role, validated.reason).catch(() => {});
 
       res.status(200).json({
         success: true,

@@ -13,6 +13,7 @@ import {
   FormattedAssignment,
   DeliveryPartnerProfile,
 } from "./delivery.types";
+import { NotificationService } from "../notifications/notification.service";
 
 function badRequestError(message: string): never {
   const err: any = new Error(message);
@@ -393,6 +394,15 @@ export class DeliveryService {
       });
     });
 
+    // Notify customer
+    await NotificationService.create({
+      userId: delivery.order.customerId,
+      type: NotificationType.DELIVERY_UPDATE,
+      title: "Order Picked Up",
+      message: `Your order #${delivery.order.orderNumber} has been picked up from the pharmacy and is on its way.`,
+      reference: `orders/${delivery.orderId}`,
+    });
+
     return this.getAssignmentById(userId, deliveryId);
   }
 
@@ -456,6 +466,7 @@ export class DeliveryService {
           type: NotificationType.DELIVERY_UPDATE,
           title: "Delivery Verification OTP",
           message: `Your MediLink delivery verification OTP for order ${delivery.order.orderNumber} is ${rawOtp}. Share this OTP with your delivery partner upon package arrival.`,
+          reference: `orders/${delivery.orderId}`,
         },
       });
 
@@ -556,6 +567,31 @@ export class DeliveryService {
       });
     });
 
+    // Notify customer and pharmacy owner
+    const pharmacyOwnerUserId = await prisma.pharmacy
+      .findUnique({ where: { id: delivery.order.pharmacyId } })
+      .then((p) => p?.ownerUserId);
+
+    const deliveryNotifs: Parameters<typeof NotificationService.bulkCreate>[0] = [
+      {
+        userId: delivery.order.customerId,
+        type: NotificationType.DELIVERY_UPDATE,
+        title: "Order Delivered",
+        message: `Your order #${delivery.order.orderNumber} has been delivered successfully. Thank you for choosing MediLink!`,
+        reference: `orders/${delivery.orderId}`,
+      },
+    ];
+    if (pharmacyOwnerUserId) {
+      deliveryNotifs.push({
+        userId: pharmacyOwnerUserId,
+        type: NotificationType.DELIVERY_UPDATE,
+        title: "Order Delivered",
+        message: `Order #${delivery.order.orderNumber} has been successfully delivered to the customer.`,
+        reference: `orders/${delivery.orderId}`,
+      });
+    }
+    await NotificationService.bulkCreate(deliveryNotifs);
+
     return this.getAssignmentById(userId, deliveryId);
   }
 
@@ -615,6 +651,14 @@ export class DeliveryService {
           },
         },
       });
+    });
+
+    await NotificationService.create({
+      userId: delivery.order.customerId,
+      type: NotificationType.DELIVERY_UPDATE,
+      title: "Delivery Attempt Failed",
+      message: `A delivery attempt for order #${delivery.order.orderNumber} was unsuccessful. ${reason ? `Reason: ${reason}` : ""} Our team will follow up shortly.`,
+      reference: `orders/${delivery.orderId}`,
     });
 
     return this.getAssignmentById(userId, deliveryId);
@@ -826,6 +870,16 @@ export class DeliveryService {
       });
 
       return delivery;
+    });
+
+    // Notify delivery partner
+    const partnerUserId = partner.user.id;
+    await NotificationService.create({
+      userId: partnerUserId,
+      type: NotificationType.DELIVERY_UPDATE,
+      title: "New Delivery Assigned",
+      message: `You have been assigned a new delivery for order #${order.orderNumber}. Please proceed to the pharmacy for pickup.`,
+      reference: `deliveries/${updatedDelivery.id}`,
     });
 
     return {

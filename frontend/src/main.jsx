@@ -47,6 +47,17 @@ import OrderConfirmation from "./pages/order-confirmation.jsx";
 import UserOrders from "./pages/user-orders.jsx";
 import UserOrderDetail from "./pages/user-order-detail.jsx";
 
+// Phase 9: Payments & Settlements
+import AdminPayments from "./pages/admin/AdminPayments.jsx";
+import AdminSettlements from "./pages/admin/AdminSettlements.jsx";
+import PharmacySettlements from "./pages/pharmacy/PharmacySettlements.jsx";
+
+// Phase 10: Notifications
+import UserNotifications from "./pages/user-notifications.jsx";
+import PharmacyNotifications from "./pages/pharmacy/PharmacyNotifications.jsx";
+import DeliveryNotifications from "./pages/delivery/DeliveryNotifications.jsx";
+import AdminNotifications from "./pages/admin/AdminNotifications.jsx";
+
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 
@@ -83,6 +94,8 @@ createRoot(document.getElementById("root")).render(
             <Route path="assignments/:id" element={<DeliveryAssignmentDetail />} />
             <Route path="history" element={<DeliveryHistory />} />
             <Route path="profile" element={<DeliveryProfile />} />
+            {/* Phase 10: Notifications */}
+            <Route path="notifications" element={<DeliveryNotifications />} />
           </Route>
 
           {/* Legacy Delivery Dashboard Redirect */}
@@ -113,6 +126,15 @@ createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             }
           />
+          {/* Phase 10: Customer Notifications */}
+          <Route
+            path="/user/notifications"
+            element={
+              <ProtectedRoute allowedRoles={["CUSTOMER", "ADMIN"]}>
+                <UserNotifications />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Phase 5 & 7: Production Pharmacy Portal */}
           <Route
@@ -132,6 +154,10 @@ createRoot(document.getElementById("root")).render(
             <Route path="inventory" element={<PharmacyInventory />} />
             <Route path="inventory/:id" element={<PharmacyInventoryDetail />} />
             <Route path="profile" element={<PharmacyProfile />} />
+            {/* Phase 9: Pharmacy Settlements */}
+            <Route path="settlements" element={<PharmacySettlements />} />
+            {/* Phase 10: Notifications */}
+            <Route path="notifications" element={<PharmacyNotifications />} />
           </Route>
 
           {/* Legacy Pharmacy Dashboard Redirect */}
@@ -156,6 +182,11 @@ createRoot(document.getElementById("root")).render(
             <Route path="deliveries/:id" element={<AdminDeliveryDetail />} />
             <Route path="audit-logs" element={<AdminAuditLogs />} />
             <Route path="profile" element={<AdminProfile />} />
+            {/* Phase 9: Admin Payments & Settlements */}
+            <Route path="payments" element={<AdminPayments />} />
+            <Route path="settlements" element={<AdminSettlements />} />
+            {/* Phase 10: Notifications */}
+            <Route path="notifications" element={<AdminNotifications />} />
           </Route>
 
           {/* Customer Medicine Browsing Pages */}

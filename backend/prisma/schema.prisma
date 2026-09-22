@@ -451,32 +451,39 @@ model Payment {
   method               PaymentMethod
   status               PaymentStatus @default(PENDING)
   amount               Decimal       @db.Decimal(10, 2)
+  provider             String        @default("INTERNAL")
   transactionReference String?
+  failureReason        String?
   paidAt               DateTime?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  order      Order       @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  settlement Settlement?
 
   @@index([orderId])
   @@index([status])
 }
 
 model Settlement {
-  id         String           @id @default(uuid())
-  orderId    String           @unique
-  pharmacyId String
-  amount     Decimal          @db.Decimal(10, 2)
-  status     SettlementStatus @default(PENDING)
-  settledAt  DateTime?
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id            String           @id @default(uuid())
+  orderId       String           @unique
+  pharmacyId    String
+  paymentId     String?          @unique
+  amount        Decimal          @db.Decimal(10, 2)
+  status        SettlementStatus @default(PENDING)
+  failureReason String?
+  settledAt     DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   order    Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
   pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  payment  Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@index([pharmacyId])
   @@index([status])
+  @@index([paymentId])
 }
 
 // =============================================================================
@@ -533,12 +540,15 @@ model Notification {
   title     String
   message   String
   isRead    Boolean          @default(false)
+  reference String?          // Deep-link reference e.g. "orders/ORD-123", "deliveries/<id>"
   createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, isRead])
   @@index([isRead])
+  @@index([createdAt])
 }
 
 model AuditLog {

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import logo from "../assets/medilink-logo.png";
 import "./delivery-layout.css";
+import { NotificationBell } from "../components/NotificationBell";
 
 export function DeliveryLayout() {
   const { user, logout, refreshUser } = useAuth();
@@ -93,6 +94,12 @@ export function DeliveryLayout() {
       to: "/delivery/profile",
       label: "Partner Profile",
       icon: User,
+      requiresVerified: false,
+    },
+    {
+      to: "/delivery/notifications",
+      label: "Notifications",
+      icon: PackageCheck,
       requiresVerified: false,
     },
   ];
@@ -256,6 +263,8 @@ export function DeliveryLayout() {
               <ExternalLink size={14} />
               <span>Public Store</span>
             </button>
+
+            <NotificationBell notificationsPath="/delivery/notifications" />
           </div>
         </header>
 

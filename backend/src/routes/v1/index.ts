@@ -11,6 +11,9 @@ import {
   pharmacyDiscoveryRouter,
   customerAddressRouter,
 } from "../../modules/marketplace/marketplace.routes";
+import { paymentRouter, adminPaymentRouter } from "../../modules/payments/payment.routes";
+import { pharmacySettlementRouter, adminSettlementRouter } from "../../modules/settlements/settlement.routes";
+import { notificationRouter } from "../../modules/notifications/notification.routes";
 
 const router = Router();
 
@@ -26,5 +29,14 @@ router.use("/orders", orderRouter);
 router.use("/medicines", medicineRouter);
 router.use("/pharmacies", pharmacyDiscoveryRouter);
 router.use("/customer/addresses", customerAddressRouter);
+
+// Phase 9: Payment & Settlement routes
+router.use("/", paymentRouter);
+router.use("/admin/payments", adminPaymentRouter);
+router.use("/pharmacy/settlements", pharmacySettlementRouter);
+router.use("/admin/settlements", adminSettlementRouter);
+
+// Phase 10: Notifications
+router.use("/notifications", notificationRouter);
 
 export default router;

@@ -13,6 +13,7 @@ import {
   OrderResponse,
   OrderResponseItem,
 } from "./order.types";
+import { NotificationService } from "../notifications/notification.service";
 
 function badRequestError(message: string): never {
   const err = new Error(message) as any;
@@ -264,6 +265,34 @@ export class OrderService {
       });
 
       return formatOrderResponse(createdOrder);
+    }).then(async (result) => {
+      // 10. Fire-and-forget notifications (outside transaction to avoid rollback on notification error)
+      const pharmacyUserId = await prisma.pharmacy
+        .findUnique({ where: { id: result.pharmacyId }, include: { owner: true } })
+        .then((p) => p?.ownerUserId);
+
+      const notifs: Parameters<typeof NotificationService.bulkCreate>[0] = [
+        {
+          userId: result.customerId,
+          type: NotificationType.ORDER_UPDATE,
+          title: "Order Placed Successfully",
+          message: `Your order #${result.orderNumber} has been placed and is awaiting pharmacy confirmation.`,
+          reference: `orders/${result.id}`,
+        },
+      ];
+
+      if (pharmacyUserId) {
+        notifs.push({
+          userId: pharmacyUserId,
+          type: NotificationType.ORDER_UPDATE,
+          title: "New Order Received",
+          message: `Order #${result.orderNumber} has been placed and requires your confirmation.`,
+          reference: `orders/${result.id}`,
+        });
+      }
+
+      await NotificationService.bulkCreate(notifs);
+      return result;
     });
   }
 
@@ -493,6 +522,15 @@ export class OrderService {
       },
     });
 
+    // Notify customer
+    await NotificationService.create({
+      userId: order.customerId,
+      type: NotificationType.ORDER_UPDATE,
+      title: "Order Accepted",
+      message: `Your order #${order.orderNumber} has been accepted by the pharmacy and is being prepared.`,
+      reference: `orders/${orderId}`,
+    });
+
     return formatOrderResponse(updated);
   }
 
@@ -565,8 +603,19 @@ export class OrderService {
 
       return {
         order: formatOrderResponse(updated),
+        orderForNotif: { customerId: order.customerId, orderNumber: order.orderNumber },
         message: "Order rejected successfully. Reserved stock released back to available inventory.",
       };
+    }).then(async (result) => {
+      // Notify customer outside transaction
+      await NotificationService.create({
+        userId: result.orderForNotif.customerId,
+        type: NotificationType.ORDER_UPDATE,
+        title: "Order Rejected",
+        message: `Your order #${result.orderForNotif.orderNumber} has been rejected by the pharmacy. Reason: ${reason}`,
+        reference: `orders/${orderId}`,
+      });
+      return { order: result.order, message: result.message };
     });
   }
 
@@ -622,6 +671,14 @@ export class OrderService {
       },
     });
 
+    await NotificationService.create({
+      userId: updated.customerId,
+      type: NotificationType.ORDER_UPDATE,
+      title: "Order Being Prepared",
+      message: `Your order #${updated.orderNumber} is now being prepared by the pharmacy.`,
+      reference: `orders/${orderId}`,
+    });
+
     return formatOrderResponse(updated);
   }
 
@@ -675,6 +732,14 @@ export class OrderService {
           newStatus: OrderStatus.READY_FOR_PICKUP,
         },
       },
+    });
+
+    await NotificationService.create({
+      userId: updated.customerId,
+      type: NotificationType.ORDER_UPDATE,
+      title: "Order Ready",
+      message: `Your order #${updated.orderNumber} is ready. ${updated.fulfillmentType === "HOME_DELIVERY" ? "A delivery partner will pick it up shortly." : "Please collect it from the pharmacy counter."}`,
+      reference: `orders/${orderId}`,
     });
 
     return formatOrderResponse(updated);

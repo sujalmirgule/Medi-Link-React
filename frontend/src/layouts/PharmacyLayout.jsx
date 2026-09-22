@@ -16,9 +16,11 @@ import {
   Clock,
   XCircle,
   RefreshCw,
+  DollarSign,
 } from "lucide-react";
 import logo from "../assets/medilink-logo.png";
 import "./pharmacy-layout.css";
+import { NotificationBell } from "../components/NotificationBell";
 
 export function PharmacyLayout() {
   const { user, logout, refreshUser } = useAuth();
@@ -72,6 +74,18 @@ export function PharmacyLayout() {
       to: "/pharmacy/profile",
       label: "Pharmacy Profile",
       icon: User,
+      requiresVerified: false,
+    },
+    {
+      to: "/pharmacy/settlements",
+      label: "My Settlements",
+      icon: DollarSign,
+      requiresVerified: true,
+    },
+    {
+      to: "/pharmacy/notifications",
+      label: "Notifications",
+      icon: ShoppingBag,
       requiresVerified: false,
     },
   ];
@@ -200,6 +214,8 @@ export function PharmacyLayout() {
               <RefreshCw size={14} className={isRefreshing ? "spin" : ""} />
               <span>Refresh</span>
             </button>
+
+            <NotificationBell notificationsPath="/pharmacy/notifications" />
 
             <button
               onClick={() => navigate("/")}

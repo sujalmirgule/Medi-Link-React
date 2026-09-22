@@ -29,6 +29,7 @@ import {
 import logo from "../assets/medilink-logo.png";
 
 import "./user-dashboard.css";
+import { NotificationBell } from "../components/NotificationBell";
 
 function UserDashboard() {
   const navigate = useNavigate();
@@ -444,18 +445,7 @@ function UserDashboard() {
 
             {/* NOTIFICATION */}
 
-            <button
-              className="notification-button"
-              aria-label="Notifications"
-            >
-
-              <Bell size={20} />
-
-              <span className="notification-count">
-                3
-              </span>
-
-            </button>
+            <NotificationBell notificationsPath="/user/notifications" />
 
 
             {/* PROFILE */}
