@@ -10,7 +10,14 @@ import Register from "./pages/register.jsx";
 import UserDashboard from "./pages/user-dashboard.jsx";
 import PharmacyDashboard from "./pages/pharmacy-dashboard.jsx";
 import DeliveryDashboard from "./pages/delivery-dashboard.jsx";
-import AdminDashboard from "./pages/admin-dashboard.jsx";
+import AdminLayout from "./layouts/AdminLayout.jsx";
+import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
+import AdminVerifications from "./pages/admin/AdminVerifications.jsx";
+import AdminUsers from "./pages/admin/AdminUsers.jsx";
+import AdminPharmacies from "./pages/admin/AdminPharmacies.jsx";
+import AdminDeliveryPartners from "./pages/admin/AdminDeliveryPartners.jsx";
+import AdminAuditLogs from "./pages/admin/AdminAuditLogs.jsx";
+import AdminProfile from "./pages/admin/AdminProfile.jsx";
 import MedicineSearch from "./pages/medicine-search.jsx";
 import MedicineDetails from "./pages/medicine-details.jsx";
 import PharmacySelection from "./pages/pharmacy-selection.jsx";
@@ -53,14 +60,25 @@ createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             }
           />
+
+          {/* Phase 4: Production Admin Portal */}
           <Route
-            path="/admin/dashboard"
+            path="/admin"
             element={
               <ProtectedRoute allowedRoles={["ADMIN"]}>
-                <AdminDashboard />
+                <AdminLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="verifications" element={<AdminVerifications />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="pharmacies" element={<AdminPharmacies />} />
+            <Route path="delivery-partners" element={<AdminDeliveryPartners />} />
+            <Route path="audit-logs" element={<AdminAuditLogs />} />
+            <Route path="profile" element={<AdminProfile />} />
+          </Route>
 
           {/* Customer Medicine Browsing Pages */}
           <Route path="/medicines" element={<MedicineSearch />} />
