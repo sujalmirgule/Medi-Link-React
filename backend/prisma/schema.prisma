@@ -1,5 +1,5 @@
 // MediLink Prisma Schema
-// Phase 1: Foundation Setup
+// Phase 2: Database Architecture & Relational Schema
 
 generator client {
   provider = "prisma-client-js"
@@ -10,11 +10,510 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Minimal placeholder model to ensure Prisma schema validity in Phase 1
-// Full business domain models (User, Pharmacy, Medicine, Order, Delivery)
-// will be defined in Phase 2.
-model HealthCheck {
-  id        Int      @id @default(autoincrement())
-  status    String   @default("ok")
-  checkedAt DateTime @default(now())
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UserRole {
+  CUSTOMER
+  PHARMACY
+  DELIVERY_PARTNER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY_FOR_PICKUP
+  ASSIGNED
+  PICKED_UP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum FulfillmentType {
+  PICKUP
+  HOME_DELIVERY
+}
+
+enum DeliveryStatus {
+  PENDING
+  ASSIGNED
+  PICKED_UP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+}
+
+enum PaymentMethod {
+  UPI
+  COD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum SettlementStatus {
+  PENDING
+  SETTLED
+  FAILED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  DELIVERY_UPDATE
+  SYSTEM
+  PROMOTION
+}
+
+// =============================================================================
+// 1. IDENTITY & USERS
+// =============================================================================
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  phone        String?
+  passwordHash String
+  role         UserRole  @default(CUSTOMER)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relationships
+  profile         CustomerProfile?
+  deliveryPartner DeliveryPartner?
+  ownedPharmacies Pharmacy[]        @relation("PharmacyOwner")
+  pharmacyStaff   PharmacyStaff[]
+  addresses       Address[]
+  orders          Order[]           @relation("CustomerOrders")
+  reviews         Review[]          @relation("CustomerReviews")
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+}
+
+// =============================================================================
+// 2. CUSTOMER
+// =============================================================================
+
+model CustomerProfile {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// =============================================================================
+// 3. PHARMACY
+// =============================================================================
+
+model Pharmacy {
+  id            String    @id @default(uuid())
+  ownerUserId   String
+  name          String
+  licenseNumber String    @unique
+  phone         String
+  email         String
+  address       String
+  city          String
+  state         String
+  pincode       String
+  latitude      Float?
+  longitude     Float?
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  owner       User               @relation("PharmacyOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  staff       PharmacyStaff[]
+  medicines   PharmacyMedicine[]
+  orders      Order[]
+  settlements Settlement[]
+  reviews     Review[]
+
+  @@index([city])
+  @@index([state])
+  @@index([isActive])
+  @@index([ownerUserId])
+}
+
+model PharmacyStaff {
+  id         String   @id @default(uuid())
+  userId     String
+  pharmacyId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pharmacyId])
+  @@index([pharmacyId])
+}
+
+// =============================================================================
+// 4. DELIVERY PARTNER
+// =============================================================================
+
+model DeliveryPartner {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  phone       String
+  isVerified  Boolean  @default(false)
+  isAvailable Boolean  @default(true)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries Delivery[]
+  reviews    Review[]
+
+  @@index([isAvailable])
+  @@index([isActive])
+}
+
+// =============================================================================
+// 5. ADDRESS
+// =============================================================================
+
+model Address {
+  id           String   @id @default(uuid())
+  userId       String
+  label        String   @default("Home") // e.g., "Home", "Work", "Other"
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  pincode      String
+  latitude     Float?
+  longitude    Float?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([userId])
+  @@index([pincode])
+}
+
+// =============================================================================
+// 6. MEDICINE CATALOG
+// =============================================================================
+
+model MedicineCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  medicines Medicine[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model Medicine {
+  id                   String   @id @default(uuid())
+  name                 String
+  genericName          String
+  composition          String
+  description          String?
+  manufacturer         String
+  categoryId           String
+  prescriptionRequired Boolean  @default(false)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  category          MedicineCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  pharmacyMedicines PharmacyMedicine[]
+  reviews           Review[]
+
+  @@index([name])
+  @@index([genericName])
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+// =============================================================================
+// 7. PHARMACY INVENTORY & BATCHES
+// =============================================================================
+
+model PharmacyMedicine {
+  id           String   @id @default(uuid())
+  pharmacyId   String
+  medicineId   String
+  sellingPrice Decimal  @db.Decimal(10, 2)
+  isAvailable  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  pharmacy   Pharmacy         @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  medicine   Medicine         @relation(fields: [medicineId], references: [id], onDelete: Restrict)
+  batches    InventoryBatch[]
+  orderItems OrderItem[]
+
+  @@unique([pharmacyId, medicineId])
+  @@index([pharmacyId])
+  @@index([medicineId])
+  @@index([isAvailable])
+}
+
+model InventoryBatch {
+  id                 String    @id @default(uuid())
+  pharmacyMedicineId String
+  batchNumber        String
+  manufacturingDate  DateTime?
+  expiryDate         DateTime
+  quantity           Int       @default(0)
+  reservedQuantity   Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  pharmacyMedicine PharmacyMedicine @relation(fields: [pharmacyMedicineId], references: [id], onDelete: Cascade)
+  orderItems       OrderItem[]
+
+  @@unique([pharmacyMedicineId, batchNumber])
+  @@index([pharmacyMedicineId])
+  @@index([expiryDate])
+}
+
+// =============================================================================
+// 8. ORDERS & ORDER ITEMS
+// =============================================================================
+
+model Order {
+  id                 String          @id @default(uuid())
+  orderNumber        String          @unique
+  customerId         String
+  pharmacyId         String
+  deliveryAddressId  String?
+  orderStatus        OrderStatus     @default(PENDING)
+  fulfillmentType    FulfillmentType @default(PICKUP)
+  subtotal           Decimal         @db.Decimal(10, 2)
+  deliveryFee        Decimal         @default(0.00) @db.Decimal(10, 2)
+  discountAmount     Decimal         @default(0.00) @db.Decimal(10, 2)
+  totalAmount        Decimal         @db.Decimal(10, 2)
+  customerNote       String?
+  cancellationReason String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  // Relationships
+  customer        User             @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Restrict)
+  pharmacy        Pharmacy         @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  deliveryAddress Address?         @relation(fields: [deliveryAddressId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+  delivery        Delivery?
+  payments        Payment[]
+  settlement      Settlement?
+
+  @@index([customerId])
+  @@index([pharmacyId])
+  @@index([orderStatus])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id                 String   @id @default(uuid())
+  orderId            String
+  pharmacyMedicineId String
+  inventoryBatchId   String?
+  quantity           Int
+  unitPrice          Decimal  @db.Decimal(10, 2)
+  totalPrice         Decimal  @db.Decimal(10, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  order            Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  pharmacyMedicine PharmacyMedicine @relation(fields: [pharmacyMedicineId], references: [id], onDelete: Restrict)
+  inventoryBatch   InventoryBatch?  @relation(fields: [inventoryBatchId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([pharmacyMedicineId])
+}
+
+// =============================================================================
+// 9. DELIVERY & TRACKING
+// =============================================================================
+
+model Delivery {
+  id                String         @id @default(uuid())
+  orderId           String         @unique
+  deliveryPartnerId String?
+  status            DeliveryStatus @default(PENDING)
+  pickupAt          DateTime?
+  pickedUpAt        DateTime?
+  outForDeliveryAt  DateTime?
+  deliveredAt       DateTime?
+  deliveryOtpHash   String?
+  attemptCount      Int            @default(0)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  order           Order            @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  deliveryPartner DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id], onDelete: SetNull)
+  events          DeliveryEvent[]
+
+  @@index([deliveryPartnerId])
+  @@index([status])
+}
+
+model DeliveryEvent {
+  id         String         @id @default(uuid())
+  deliveryId String
+  status     DeliveryStatus
+  note       String?
+  createdAt  DateTime       @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// 10. PAYMENTS & SETTLEMENTS
+// =============================================================================
+
+model Payment {
+  id                   String        @id @default(uuid())
+  orderId              String
+  method               PaymentMethod
+  status               PaymentStatus @default(PENDING)
+  amount               Decimal       @db.Decimal(10, 2)
+  transactionReference String?
+  paidAt               DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model Settlement {
+  id         String           @id @default(uuid())
+  orderId    String           @unique
+  pharmacyId String
+  amount     Decimal          @db.Decimal(10, 2)
+  status     SettlementStatus @default(PENDING)
+  settledAt  DateTime?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+
+  @@index([pharmacyId])
+  @@index([status])
+}
+
+// =============================================================================
+// 11. REVIEWS & RATINGS
+// =============================================================================
+
+model Review {
+  id                String   @id @default(uuid())
+  customerId        String
+  pharmacyId        String?
+  deliveryPartnerId String?
+  medicineId        String?
+  rating            Int // Scale: 1 to 5
+  comment           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  customer        User             @relation("CustomerReviews", fields: [customerId], references: [id], onDelete: Restrict)
+  pharmacy        Pharmacy?        @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
+  deliveryPartner DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id], onDelete: SetNull)
+  medicine        Medicine?        @relation(fields: [medicineId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([pharmacyId])
+  @@index([deliveryPartnerId])
+  @@index([medicineId])
+}
+
+// =============================================================================
+// 12. PLATFORM: DISCOUNTS, NOTIFICATIONS & AUDIT LOGS
+// =============================================================================
+
+model Discount {
+  id                 String       @id @default(uuid())
+  code               String       @unique
+  type               DiscountType @default(PERCENTAGE)
+  value              Decimal      @db.Decimal(10, 2)
+  maxDiscount        Decimal?     @db.Decimal(10, 2)
+  minimumOrderAmount Decimal?     @db.Decimal(10, 2)
+  startsAt           DateTime     @default(now())
+  endsAt             DateTime?
+  isActive           Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType @default(SYSTEM)
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity])
+  @@index([action])
+  @@index([createdAt])
 }
