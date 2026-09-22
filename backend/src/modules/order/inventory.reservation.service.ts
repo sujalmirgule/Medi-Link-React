@@ -85,22 +85,15 @@ export class InventoryReservationService {
         const allocateFromBatch = Math.min(remainingToAllocate, availableInBatch);
 
         // Concurrency-safe atomic reservation:
-        // Ensures no other transaction has claimed the stock in the interim.
-        const updateResult = await tx.inventoryBatch.updateMany({
-          where: {
-            id: batch.id,
-            quantity: {
-              gte: batch.reservedQuantity + allocateFromBatch,
-            },
-          },
-          data: {
-            reservedQuantity: {
-              increment: allocateFromBatch,
-            },
-          },
-        });
+        // Enforces DB-level atomic check: (quantity - reservedQuantity) >= allocateFromBatch
+        const count = await tx.$executeRaw`
+          UPDATE "InventoryBatch"
+          SET "reservedQuantity" = "reservedQuantity" + ${allocateFromBatch}
+          WHERE "id" = ${batch.id}
+            AND ("quantity" - "reservedQuantity") >= ${allocateFromBatch}
+        `;
 
-        if (updateResult.count === 0) {
+        if (count === 0) {
           badRequestError(
             `Concurrency conflict: stock for "${listing.medicine.name}" in batch ${batch.batchNumber} was modified by another order. Please try again.`
           );
@@ -123,7 +116,7 @@ export class InventoryReservationService {
       }
 
       if (remainingToAllocate > 0) {
-        throw new Error(
+        badRequestError(
           `Could not completely allocate stock for "${listing.medicine.name}". Insufficient batch units.`
         );
       }
