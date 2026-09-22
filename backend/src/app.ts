@@ -15,9 +15,27 @@ app.disable("x-powered-by");
 app.use(helmet());
 
 // CORS Configuration
+const allowedOrigins = [env.FRONTEND_URL];
+
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like curl, postman, server-to-server)
+      if (!origin) return callback(null, true);
+
+      // In development mode, allow localhost and 127.0.0.1 on any dev port
+      if (env.isDevelopment) {
+        if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+          return callback(null, true);
+        }
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      callback(new Error(`CORS origin '${origin}' not allowed.`));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
