@@ -29,8 +29,9 @@ export class AIGuardrails {
     // 1. Prompt Injection & Jailbreak Attempts
     const injectionPatterns = [
       /ignore\s+(all\s+)?(previous|prior|above)\s+instructions/i,
-      /system\s+prompt/i,
+      /system\s+(prompt|override|instruction)/i,
       /reveal\s+(your|the)\s+(prompt|instructions)/i,
+      /(output|reveal|leak|print|show)\s+(internal|secret|private|api|system)/i,
       /bypass\s+(safety|rules|guardrails)/i,
       /act\s+as\s+(a\s+)?(doctor|physician|prescriber|pharmacist)/i,
       /you\s+are\s+now\s+(a\s+)?(doctor|unrestricted)/i,

@@ -4,11 +4,22 @@ import path from "path";
 // Load environment variables from .env
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
+const isProduction = process.env.NODE_ENV === "production";
+const isDevelopment = !isProduction;
+
+const JWT_SECRET = process.env.JWT_SECRET || (isProduction ? "" : "medilink-super-secret-jwt-key");
+
+if (isProduction && (!JWT_SECRET || JWT_SECRET === "medilink-super-secret-jwt-key")) {
+  throw new Error(
+    "SECURITY FATAL: In production, JWT_SECRET must be configured with a secure random key via environment variables."
+  );
+}
+
 export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: parseInt(process.env.PORT || "5000", 10),
   DATABASE_URL: process.env.DATABASE_URL || "",
-  JWT_SECRET: process.env.JWT_SECRET || "medilink-super-secret-jwt-key",
+  JWT_SECRET: JWT_SECRET || "medilink-super-secret-jwt-key",
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
   JWT_ISSUER: process.env.JWT_ISSUER || "medilink-api",
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -16,6 +27,6 @@ export const env = {
   DEV_ADMIN_PASSWORD: process.env.DEV_ADMIN_PASSWORD || "Admin@MediLink2026",
   AI_PROVIDER: process.env.AI_PROVIDER || "internal",
   AI_API_KEY: process.env.AI_API_KEY || "",
-  isProduction: process.env.NODE_ENV === "production",
-  isDevelopment: process.env.NODE_ENV !== "production",
+  isProduction,
+  isDevelopment,
 };

@@ -15,6 +15,7 @@ export class TokenService {
       },
       env.JWT_SECRET,
       {
+        algorithm: "HS256",
         expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
         issuer: env.JWT_ISSUER,
       }
@@ -22,11 +23,12 @@ export class TokenService {
   }
 
   /**
-   * Verify an incoming JWT access token against the configured secret and issuer.
+   * Verify an incoming JWT access token against the configured secret, issuer, and algorithm.
    */
   static verifyToken(token: string): JwtPayload {
     const decoded = jwt.verify(token, env.JWT_SECRET, {
       issuer: env.JWT_ISSUER,
+      algorithms: ["HS256"],
     }) as JwtPayload;
 
     if (!decoded.sub || !decoded.role) {
