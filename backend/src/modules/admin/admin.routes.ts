@@ -28,6 +28,7 @@ adminRouter.get("/pharmacies", AdminController.listPharmacies);
 adminRouter.get("/pharmacies/:id", AdminController.getPharmacyById);
 
 // 5. Delivery Partner Directory
+adminRouter.get("/delivery-partners/eligible", AdminController.getEligiblePartners);
 adminRouter.get("/delivery-partners", AdminController.listDeliveryPartners);
 adminRouter.get("/delivery-partners/:id", AdminController.getDeliveryPartnerById);
 
@@ -37,4 +38,11 @@ adminRouter.get("/audit-logs", AdminController.listAuditLogs);
 // 7. Admin Profile
 adminRouter.get("/profile", AdminController.getProfile);
 
+// 8. Delivery Management & Assignment
+adminRouter.get("/orders/eligible-for-delivery", AdminController.getEligibleOrders);
+adminRouter.post("/orders/:orderId/assign-delivery", AdminController.assignDelivery);
+adminRouter.get("/deliveries", AdminController.listDeliveries);
+adminRouter.get("/deliveries/:id", AdminController.getDeliveryById);
+
 export default adminRouter;
+

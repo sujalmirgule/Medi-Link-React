@@ -8,6 +8,7 @@ import {
   Users,
   Store,
   Truck,
+  PackageCheck,
   FileText,
   UserCheck,
   LogOut,
@@ -79,6 +80,11 @@ export function AdminLayout() {
       to: "/admin/delivery-partners",
       label: "Delivery Partners",
       icon: Truck,
+    },
+    {
+      to: "/admin/deliveries",
+      label: "Deliveries",
+      icon: PackageCheck,
     },
     {
       to: "/admin/audit-logs",

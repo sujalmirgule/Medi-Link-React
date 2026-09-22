@@ -12,6 +12,7 @@
     "test:admin": "tsx src/scripts/test-admin.ts",
     "test:pharmacy": "tsx src/scripts/test-pharmacy.ts",
     "test:orders": "tsx src/scripts/test-orders.ts",
+    "test:delivery": "tsx src/scripts/test-delivery.ts",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {

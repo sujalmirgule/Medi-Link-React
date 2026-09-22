@@ -87,5 +87,28 @@ export interface OrderResponse {
     firstName?: string;
     lastName?: string;
   };
+  delivery?: {
+    id: string;
+    status: string;
+    attemptCount: number;
+    pickupAt?: Date | null;
+    pickedUpAt?: Date | null;
+    outForDeliveryAt?: Date | null;
+    deliveredAt?: Date | null;
+    currentLatitude?: number | null;
+    currentLongitude?: number | null;
+    deliveryPartner?: {
+      id: string;
+      name: string;
+      phone: string;
+    } | null;
+    events?: Array<{
+      id: string;
+      status: string;
+      note?: string | null;
+      createdAt: Date;
+    }>;
+  } | null;
+  deliveryOtp?: string | null;
   items: OrderResponseItem[];
 }

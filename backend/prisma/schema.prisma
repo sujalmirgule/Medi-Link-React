@@ -413,6 +413,10 @@ model Delivery {
   deliveredAt       DateTime?
   deliveryOtpHash   String?
   attemptCount      Int            @default(0)
+  provider          String         @default("INTERNAL")
+  currentLatitude   Float?
+  currentLongitude  Float?
+  lastLocationAt    DateTime?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 

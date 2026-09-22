@@ -18,6 +18,15 @@ import AdminDeliveryPartners from "./pages/admin/AdminDeliveryPartners.jsx";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs.jsx";
 import AdminProfile from "./pages/admin/AdminProfile.jsx";
 
+// Phase 8: Delivery Partner Portal & Admin Deliveries
+import DeliveryLayout from "./layouts/DeliveryLayout.jsx";
+import DeliveryAssignments from "./pages/delivery/DeliveryAssignments.jsx";
+import DeliveryAssignmentDetail from "./pages/delivery/DeliveryAssignmentDetail.jsx";
+import DeliveryHistory from "./pages/delivery/DeliveryHistory.jsx";
+import DeliveryProfile from "./pages/delivery/DeliveryProfile.jsx";
+import AdminDeliveries from "./pages/admin/AdminDeliveries.jsx";
+import AdminDeliveryDetail from "./pages/admin/AdminDeliveryDetail.jsx";
+
 // Phase 5 & 7: Pharmacy Portal & Orders
 import PharmacyLayout from "./layouts/PharmacyLayout.jsx";
 import PharmacyDashboard from "./pages/pharmacy/PharmacyDashboard.jsx";
@@ -59,14 +68,25 @@ createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             }
           />
+          {/* Phase 8: Production Delivery Partner Portal */}
           <Route
-            path="/delivery/dashboard"
+            path="/delivery"
             element={
               <ProtectedRoute allowedRoles={["DELIVERY_PARTNER", "ADMIN"]}>
-                <DeliveryDashboard />
+                <DeliveryLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<DeliveryDashboard />} />
+            <Route path="dashboard" element={<DeliveryDashboard />} />
+            <Route path="assignments" element={<DeliveryAssignments />} />
+            <Route path="assignments/:id" element={<DeliveryAssignmentDetail />} />
+            <Route path="history" element={<DeliveryHistory />} />
+            <Route path="profile" element={<DeliveryProfile />} />
+          </Route>
+
+          {/* Legacy Delivery Dashboard Redirect */}
+          <Route path="/delivery-dashboard" element={<Navigate to="/delivery/dashboard" replace />} />
 
           {/* Customer Order Management */}
           <Route
@@ -117,7 +137,7 @@ createRoot(document.getElementById("root")).render(
           {/* Legacy Pharmacy Dashboard Redirect */}
           <Route path="/pharmacy-dashboard" element={<Navigate to="/pharmacy/dashboard" replace />} />
 
-          {/* Phase 4: Production Admin Portal */}
+          {/* Phase 4 & 8: Production Admin Portal */}
           <Route
             path="/admin"
             element={
@@ -132,6 +152,8 @@ createRoot(document.getElementById("root")).render(
             <Route path="users" element={<AdminUsers />} />
             <Route path="pharmacies" element={<AdminPharmacies />} />
             <Route path="delivery-partners" element={<AdminDeliveryPartners />} />
+            <Route path="deliveries" element={<AdminDeliveries />} />
+            <Route path="deliveries/:id" element={<AdminDeliveryDetail />} />
             <Route path="audit-logs" element={<AdminAuditLogs />} />
             <Route path="profile" element={<AdminProfile />} />
           </Route>

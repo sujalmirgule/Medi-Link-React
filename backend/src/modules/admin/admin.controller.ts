@@ -267,4 +267,94 @@ export class AdminController {
       next(err);
     }
   }
+
+  /**
+   * POST /api/v1/admin/orders/:orderId/assign-delivery
+   */
+  static async assignDelivery(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { orderId } = req.params;
+      const { deliveryPartnerId } = req.body;
+      const { DeliveryService } = await import("../delivery/delivery.service");
+      const result = await DeliveryService.assignDeliveryAdmin(
+        req.user!.id,
+        orderId,
+        deliveryPartnerId
+      );
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/deliveries
+   */
+  static async listDeliveries(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { DeliveryService } = await import("../delivery/delivery.service");
+      const result = await DeliveryService.listDeliveriesAdmin(req.query as any);
+      res.status(200).json({
+        success: true,
+        data: result.items,
+        pagination: result.pagination,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/deliveries/:id
+   */
+  static async getDeliveryById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const { DeliveryService } = await import("../delivery/delivery.service");
+      const result = await DeliveryService.getDeliveryDetailAdmin(id);
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/orders/eligible-for-delivery
+   */
+  static async getEligibleOrders(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { DeliveryService } = await import("../delivery/delivery.service");
+      const result = await DeliveryService.getEligibleOrdersAdmin();
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/delivery-partners/eligible
+   */
+  static async getEligiblePartners(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { DeliveryService } = await import("../delivery/delivery.service");
+      const result = await DeliveryService.getEligiblePartnersAdmin();
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
+

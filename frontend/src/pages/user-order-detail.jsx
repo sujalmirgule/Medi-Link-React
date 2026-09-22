@@ -13,6 +13,10 @@ import {
   RefreshCw,
   AlertTriangle,
   FileText,
+  ShieldCheck,
+  Navigation,
+  User,
+  Phone,
 } from "lucide-react";
 import logo from "../assets/medilink-logo.png";
 import "./user-dashboard.css";
@@ -67,30 +71,65 @@ export default function UserOrderDetail() {
     );
   }
 
-  const steps = [
-    { key: "PENDING", label: "Order Placed" },
-    { key: "ACCEPTED", label: "Accepted by Pharmacy" },
-    { key: "PREPARING", label: "Preparing Medicines" },
-    { key: "READY_FOR_PICKUP", label: order.fulfillmentType === "HOME_DELIVERY" ? "Ready for Delivery" : "Ready for Pickup" },
-  ];
+  const isHomeDelivery = order.fulfillmentType === "HOME_DELIVERY";
+
+  const steps = isHomeDelivery
+    ? [
+        { key: "PENDING", label: "Placed" },
+        { key: "ACCEPTED", label: "Accepted" },
+        { key: "PREPARING", label: "Preparing" },
+        { key: "READY_FOR_PICKUP", label: "Ready" },
+        { key: "ASSIGNED", label: "Assigned" },
+        { key: "PICKED_UP", label: "Picked Up" },
+        { key: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
+        { key: "DELIVERED", label: "Delivered" },
+      ]
+    : [
+        { key: "PENDING", label: "Order Placed" },
+        { key: "ACCEPTED", label: "Accepted by Pharmacy" },
+        { key: "PREPARING", label: "Preparing Medicines" },
+        { key: "READY_FOR_PICKUP", label: "Ready for Pickup" },
+        { key: "COMPLETED", label: "Completed" },
+      ];
 
   const getStepIndex = (status) => {
-    switch (status) {
-      case "PENDING":
-        return 0;
-      case "ACCEPTED":
-        return 1;
-      case "PREPARING":
-        return 2;
-      case "READY_FOR_PICKUP":
-      case "ASSIGNED":
-      case "PICKED_UP":
-      case "OUT_FOR_DELIVERY":
-      case "DELIVERED":
-      case "COMPLETED":
-        return 3;
-      default:
-        return -1;
+    if (isHomeDelivery) {
+      switch (status) {
+        case "PENDING":
+          return 0;
+        case "ACCEPTED":
+          return 1;
+        case "PREPARING":
+          return 2;
+        case "READY_FOR_PICKUP":
+          return 3;
+        case "ASSIGNED":
+          return 4;
+        case "PICKED_UP":
+          return 5;
+        case "OUT_FOR_DELIVERY":
+          return 6;
+        case "DELIVERED":
+        case "COMPLETED":
+          return 7;
+        default:
+          return -1;
+      }
+    } else {
+      switch (status) {
+        case "PENDING":
+          return 0;
+        case "ACCEPTED":
+          return 1;
+        case "PREPARING":
+          return 2;
+        case "READY_FOR_PICKUP":
+          return 3;
+        case "COMPLETED":
+          return 4;
+        default:
+          return -1;
+      }
     }
   };
 
@@ -248,6 +287,52 @@ export default function UserOrderDetail() {
               </div>
             </div>
           )}
+
+          {/* Delivery Verification OTP Card (Shown when OUT_FOR_DELIVERY) */}
+          {order.deliveryOtp && (
+            <div
+              style={{
+                marginTop: "24px",
+                background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+                borderRadius: "12px",
+                padding: "20px 24px",
+                color: "#ffffff",
+                boxShadow: "0 8px 20px rgba(2, 132, 199, 0.25)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "16px",
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <ShieldCheck size={20} />
+                  <span style={{ fontSize: "14px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Delivery Verification OTP
+                  </span>
+                </div>
+                <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#e0f2fe" }}>
+                  Please provide this 6-digit confirmation code to your delivery partner upon arrival.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background: "rgba(255, 255, 255, 0.2)",
+                  border: "2px dashed rgba(255, 255, 255, 0.6)",
+                  borderRadius: "10px",
+                  padding: "8px 20px",
+                  fontSize: "26px",
+                  fontWeight: 850,
+                  letterSpacing: "0.25em",
+                  fontFamily: "monospace",
+                }}
+              >
+                {order.deliveryOtp}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pharmacy & Location Details Grid */}
@@ -296,6 +381,80 @@ export default function UserOrderDetail() {
             )}
           </div>
         </div>
+
+        {/* Delivery Partner Tracking Card (If assigned) */}
+        {order.delivery && (
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "14px",
+              border: "1px solid #e2e8f0",
+              padding: "20px 24px",
+              marginBottom: "24px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", fontWeight: 700, color: "#0284c7", textTransform: "uppercase", marginBottom: "12px" }}>
+              <Truck size={16} /> Delivery Partner Telemetry
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
+              <div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Partner Name</div>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>
+                  {order.delivery.deliveryPartner?.fullName || "Assigned Partner"}
+                </div>
+                {order.delivery.deliveryPartner?.phone && (
+                  <div style={{ fontSize: "12px", color: "#0284c7", marginTop: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <Phone size={12} /> {order.delivery.deliveryPartner.phone}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Vehicle Info</div>
+                <div style={{ fontSize: "14px", fontWeight: 600, color: "#0f172a", marginTop: "2px" }}>
+                  {order.delivery.deliveryPartner?.vehicleNumber || "Registration On File"}
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>
+                  {order.delivery.deliveryPartner?.vehicleType}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Live Status</div>
+                <div style={{ fontSize: "14px", fontWeight: 700, color: "#0284c7", marginTop: "2px" }}>
+                  {order.delivery.status}
+                </div>
+                {order.delivery.currentLatitude && order.delivery.currentLongitude && (
+                  <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <Navigation size={12} color="#10b981" /> Telemetry active
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Delivery Event Timeline */}
+            {order.delivery.events && order.delivery.events.length > 0 && (
+              <div style={{ marginTop: "18px", borderTop: "1px solid #f1f5f9", paddingTop: "14px" }}>
+                <div style={{ fontSize: "12px", fontWeight: 700, color: "#475569", marginBottom: "8px" }}>
+                  Tracking Milestones
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {order.delivery.events.map((evt) => (
+                    <div key={evt.id} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px" }}>
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#0284c7" }} />
+                      <strong style={{ color: "#0f172a" }}>{evt.status}</strong>
+                      <span style={{ color: "#64748b" }}>
+                        — {new Date(evt.timestamp || evt.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      {evt.notes && <span style={{ color: "#64748b" }}>({evt.notes})</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Ordered Items Table */}
         <div style={{ background: "#ffffff", padding: "24px", borderRadius: "14px", border: "1px solid #e2e8f0" }}>

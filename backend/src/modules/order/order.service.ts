@@ -1,4 +1,10 @@
-import { FulfillmentType, OrderStatus, Prisma } from "@prisma/client";
+import {
+  FulfillmentType,
+  OrderStatus,
+  DeliveryStatus,
+  NotificationType,
+  Prisma,
+} from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { InventoryReservationService } from "./inventory.reservation.service";
 import {
@@ -81,6 +87,35 @@ function formatOrderResponse(order: any): OrderResponse {
           lastName: order.customer.profile?.lastName,
         }
       : undefined,
+    delivery: order.delivery
+      ? {
+          id: order.delivery.id,
+          status: order.delivery.status,
+          attemptCount: order.delivery.attemptCount,
+          pickupAt: order.delivery.pickupAt,
+          pickedUpAt: order.delivery.pickedUpAt,
+          outForDeliveryAt: order.delivery.outForDeliveryAt,
+          deliveredAt: order.delivery.deliveredAt,
+          currentLatitude: order.delivery.currentLatitude,
+          currentLongitude: order.delivery.currentLongitude,
+          deliveryPartner: order.delivery.deliveryPartner
+            ? {
+                id: order.delivery.deliveryPartner.id,
+                name: order.delivery.deliveryPartner.user?.profile
+                  ? `${order.delivery.deliveryPartner.user.profile.firstName} ${order.delivery.deliveryPartner.user.profile.lastName}`
+                  : order.delivery.deliveryPartner.user?.email || "Delivery Partner",
+                phone: order.delivery.deliveryPartner.phone,
+              }
+            : null,
+          events: (order.delivery.events || []).map((e: any) => ({
+            id: e.id,
+            status: e.status,
+            note: e.note,
+            createdAt: e.createdAt,
+          })),
+        }
+      : null,
+    deliveryOtp: order.deliveryOtp || null,
     items,
   };
 }
@@ -292,6 +327,14 @@ export class OrderService {
             },
           },
         },
+        delivery: {
+          include: {
+            deliveryPartner: {
+              include: { user: { include: { profile: true } } },
+            },
+            events: { orderBy: { createdAt: "asc" } },
+          },
+        },
       },
     });
 
@@ -299,7 +342,26 @@ export class OrderService {
       notFoundError("Order");
     }
 
-    return formatOrderResponse(order);
+    let customerOtp: string | null = null;
+    if (order.delivery?.status === DeliveryStatus.OUT_FOR_DELIVERY) {
+      const notif = await prisma.notification.findFirst({
+        where: {
+          userId: customerId,
+          type: NotificationType.DELIVERY_UPDATE,
+          message: { contains: order.orderNumber },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (notif) {
+        const match = notif.message.match(/\b\d{6}\b/);
+        if (match) customerOtp = match[0];
+      }
+    }
+
+    return formatOrderResponse({
+      ...order,
+      deliveryOtp: customerOtp,
+    });
   }
 
   /**
